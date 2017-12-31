@@ -7,6 +7,11 @@ use Database\DatabaseEngine;
 use Database\DatabaseTypeType;
 use Database\DatabaseTypeComparison;
 
+/**
+ * The expected conventions of a typical SQL driver.
+ *
+ * @package Database\SQL
+ */
 abstract class DatabaseSQLStandard implements DatabaseSQLInterface {
     /**
      * @var mixed A link to the database driver connection.

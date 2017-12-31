@@ -818,10 +818,11 @@ abstract class Database
      *
      * @param array|string  $sort   A string or array defining how to sort the return data.
      * @param int           $limit  The maximum number of columns to select.
+     * @param int           $page   The nth (starting from 0) page of results to return.
      *
      * @return object
      */
-    abstract public function select($columns, $conditionArray = false, $sort = false, $limit = false);
+    abstract public function select($columns, $conditionArray = false, $sort = false, $limit = false, $page = 0);
 
 
     /**

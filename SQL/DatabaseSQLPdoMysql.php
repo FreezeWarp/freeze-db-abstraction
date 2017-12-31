@@ -6,6 +6,11 @@ use PDOStatement;
 use PDOException;
 use Exception;
 
+/**
+ * The conventions of the PDO MySQL driver.
+ *
+ * @package Database\SQL
+ */
 class DatabaseSQLPdoMysql extends DatabaseDefinitionsMySQL {
     use DatabasePDOTrait, DatabaseReconnectOnSelectDatabaseTrait;
 

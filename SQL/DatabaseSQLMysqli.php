@@ -6,6 +6,11 @@ use mysqli_result;
 
 use Database\DatabaseResultInterface;
 
+/**
+ * The conventions of the MySQLi MySQL driver.
+ *
+ * @package Database\SQL
+ */
 class DatabaseSQLMysqli extends DatabaseDefinitionsMySQL {
     use DatabaseManualInsertIDTrait;
 

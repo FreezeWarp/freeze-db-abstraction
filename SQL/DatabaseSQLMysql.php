@@ -3,6 +3,12 @@ namespace Database\SQL;
 
 use Database\DatabaseResultInterface;
 
+/**
+ * The conventions of the MySQL MySQL driver.
+ * This driver is deprecated, and should generally not be used. It is primarily included for testing purposes.
+ *
+ * @package Database\SQL
+ */
 class DatabaseSQLMysql extends DatabaseDefinitionsMySQL {
     /**
      * @var resource

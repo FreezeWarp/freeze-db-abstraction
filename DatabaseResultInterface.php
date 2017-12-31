@@ -2,6 +2,11 @@
 
 namespace Database;
 
+/**
+ * An interface that defines how Database drivers must return results to {@see DatabaseResult}.
+ *
+ * @package Database
+ */
 interface DatabaseResultInterface {
     /**
      * @return array The next row from the resultset, or false if no more results are available.

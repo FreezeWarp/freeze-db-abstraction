@@ -11,6 +11,11 @@ use Database\DatabaseEngine;
 use Database\DatabaseTypeType;
 use Database\DatabaseTypeComparison;
 
+/**
+ * The conventions of all PDO drivers.
+ *
+ * @package Database\SQL
+ */
 trait DatabasePDOTrait {
     use DatabaseManualInsertIDTrait;
 

@@ -1,18 +1,4 @@
 <?php
-/* FreezeMessenger Copyright © 2017 Joseph Todd Parsons
-
- * This program is free software: you can redistribute it and/or modify
-   it under the terms of the GNU General Public License as published by
-   the Free Software Foundation, either version 3 of the License, or
-   (at your option) any later version.
-
- * This program is distributed in the hope that it will be useful,
-   but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-   GNU General Public License for more details.
-
- * You should have received a copy of the GNU General Public License
-   along with this program.  If not, see <http://www.gnu.org/licenses/>. */
 namespace Database\SQL;
 
 use Exception;
@@ -26,80 +12,12 @@ use Database\DatabaseType;
 use Database\DatabaseTypeType;
 use Database\DatabaseTypeComparison;
 
-/**** BRIEF INTRODUCTION ****/
-/* This file is the MySQL-version (and the only one currently existing) of a generic database layer created for FreezeMessenger. What purpose could it possibly serve? Why not go the PDO-route? Mainly, it offers a few distinct advantages: full control, easier to modify by plugins (specifically, in that most data is stored in a tree structure), and perhaps more importantly it allows things that PDO, which is fundamentally an SQL extension, doesn't. There is no shortage of database foundations bearing almost no semblance to SQL: IndexedDB (which has become popular by-way of web-browser implementation), Node.JS (which I would absolutely love to work with but currently can't because of the MySQL requirement), and others come to mind.
- * As with everything else, this is GPL-based, but if anyone decides they like it and may wish to use it for less restricted purposes, contact me. I have considered going LGPL/MIT/BSD with it, but not yet :P */
-
-/**** EXTENSIBILITY NOTES ****/
-/* databaseSQL, unlike database, does not support extended languages. The class attempts to handle all variations of SQL (though, at the moment, obviously doesn't -- there will certainly need to be driver-specific code added). As a result, nearly all query strings are abstracted in some way or another with the hope that different SQL variations can be better accomodated with the least amount of code. That said, if a variation is to be added, it needs to be added to databaseSQL. */
-
-/**** SUPPORT NOTES ****/
-/* The following is a basic changelog of key MySQL features since 4.1, without common upgrade conversions, slave changes, and logging changes included:
- * 4.1.0: Database, table, and column names are now stored UTF-8 (previously ASCII).
- * 4.1.0: Binary values are treated as strings instead of numbers by default now. (use CAST())
- * 4.1.0: DELETE statements no longer require that named tables be used instead of aliases (e.g. "DELETE t1 FROM test AS t1, test2 WHERE ..." previously had to be "DELETE test FROM test AS t1, test2 WHERE ...").
- * 4.1.0: LIMIT can no longer be negative.
- * 4.1.1: User-defined functions must contain xxx_clear().
- * 4.1.2: When comparing strings, the shorter string will now be right-padded with spaces. Previously, spaces were truncated entirely. Indexes should be rebuilt as a result.
- * 4.1.2: Float previously allowed higher values than standard. While previously FLOAT(3,1) could be 100.0, it now must not exceed 99.9.
- * 4.1.2: When using "SHOW TABLE STATUS", the old column "type" is now "engine".
- * 4.1.3: InnoDB indexes using latin1_swedish_ci from 4.1.2 and earlier should be rebuilt (using OPTIMIZE).
- * 4.1.4: Tables with TIMESTAMP columns created between 4.1.0 and 4.1.3 must be rebuilt.
- * 5.0.0: ISAM removed. Do not use. (To update, run "ALTER TABLE tbl_name ENGINE = MyISAM;")
- * 5.0.0: RAID features in MySIAM removed.
- * 5.0.0: User variables are not case sensitive in 5.0, but were prior.
- * 5.0.2: "SHOW STATUS" behavior is global before 5.0.2 and sessional afterwards. 'SHOW /*!50002 GLOBAL *\/ STATUS;' can be used to trigger global in both.
- * 5.0.2: NOT Parsing. Prior to 5.0.2, "NOT a BETWEEN b AND c" was parsed as "(NOT a) BETWEEN b AND ". Beginning in 5.0.2, it is parsed as "NOT (a BETWEEN b AND c)". The SQL mode "HIGH_NOT_PRECEDENCE" can be used to trigger the old mode. (http://dev.mysql.com/doc/refman/5.0/en/server-sql-mode.html#sqlmode_high_not_precedence).
- * 5.0.3: User defined functions must contain aux. symbols in order to run.
- * 5.0.3: The BIT Type. Prior to 5.0.3, the BIT type is a synonym for TINYINT(1). Beginning with 5.0.3, the BIT type accepts an additional argument (e.g. BIT(2)) that species the number of bits to use. (http://dev.mysql.com/doc/refman/5.0/en/bit-type.html)
- ** Due to performance, BIT is far better than TINYINT(1). Both, however, are supported in this class.
- * 5.0.3: Trailing spaces are not removed from VARCHAR and VARBINARY columns, but they were prior
- * 5.0.3: Decimal handling was changed (tables created prior to the change will maintain the old behaviour): (http://dev.mysql.com/doc/refman/5.0/en/precision-math-decimal-changes.html)
- ** Decimals are handled as binary; prior they were handled as strings.
- ** When handled as strings, the "-" sign could be replaced with any number, extending the range of DECIMAL(5,2) from the current (and standard) [-999.99,999.99] to [-999.99,9999.99], while preceeding zeros and +/- signs were maintained when stored.
- ** Additionally, prior to 5.0.3, the maximum number of digits is 264 (precise to ~15 depending on the host machine), from 5.0.3 to 5.0.5 it is 64 (precise to 64), and from 5.0.6 the maximum number of digits is 65 (precise to 65).
- ** Finally, while prior to this change both exact- and approximate-value literals were handled as double-precision floating point, now exact-value literals will be handled as decimal.
- * 5.0.6: Tables with DECIMAL columns created between 5.0.3 and 5.0.5 must be rebuilt.
- * 5.0.8: "DATETIME+0" yields YYYYMMDDHHMMSS.000000, but previously yielded YYYYMMDDHHMMSS.
- * 5.0.12: NOW() and SYSDATE() are no longer identical, with the latter be the time at script execution and the former at statement execution time (approximately).
- * 5.0.13: The GREATEST() and LEAST() functions return NULL when a passed parameter is NULL. Prior, they ignored NULL values.
- * 5.0.13: Substraction from an unsigned integer varies. Prior to 5.0.13, the bits of the subtracted value is used for the result (e.g. i-1, where i is TINYINT and 0, is the same as 0-2^64). In 5.0.13, it retains the bits of the original (e.g. it now would be 0-2^8). If comparing
- * 5.0.15: The pad value for BINARY has changed from a space to \0, as has the handling of these. Using a BINARY(3) type with a value of 'a ' to illustrate: in the original, SELECT, DISTINCT, and ORDER BY operations remove all trailing spaces ('a'), while in the new version SELECT, DISTINCT, and ORDER BY maintain all additional null bytes ('a \0'). InnoDB still uses trailing spaces ('a  '), and did not remove the trailing spaces until 5.0.19 ('a').
- * 5.0.15: CHAR() returns a binary string instead of a character set. A "USING" may be used instead to specify a character set. For instance, SELECT CHAR() returns a VARBINARY but previously would have returned VARCHAR (similarly, CHAR(ORD('A')) is equvilent to 'a' prior to this change, but now would only be so if a latin character set is specified.).
- * 5.0.25: lc_time_names will affect the display of DATE_FORMAT(), DAYNAME(), and MONTHNAME().
- * 5.0.42: When DATE and DATETIME interact, DATE is now converted to DATETIME with 00:00:00. Prior to 5.0.42, DATETIME would instead lose its time portion. CAST() can be used to mimic the old behavior.
- * 5.0.50: Statesments containing "/*" without "*\/" are no longer accepted.
- * 5.1.0: table_cache -> table_open_cache
- * 5.1.0: "-", "*", "/", POW(), and EXP() now return NULL if an error is occured during floating-point operations. Previously, they may return "+INF", "-INF", or NaN.
- * 5.1.23: In stored routines, a cursor may no longer be used in SHOW and DESCRIBE statements.
- * 5.1.15: READ_ONLY
-
- * Other incompatibilities that may be encountered:
- * Reserved Words Added in 5.0: http://dev.mysql.com/doc/mysqld-version-reference/en/mysqld-version-reference-reservedwords-5-0.html.
-  ** This class puts everything in quotes to avoid this and related issues.
-  ** Some upgrades may require rebuilding indexes. We are not concerned with these, but a script that automatically rebuilds indexes as part of databaseSQL.php would have its merits. It could then also detect version upgrades.
-  ** Previously, TIMESTAMP(N) could specify a width of "N". It was ignored in 4.1, deprecated in 5.1, and removed in 5.5. Don't use it.
-  ** UDFs should use a database qualifier to avoid issues with defined functions.
-  ** The JOIN syntax was changed in MySQL 5.0.12. The new syntax will work with old versions, however (just not the other way around).
-  ** Avoid equals comparison with floating point values.
-  ** Timestamps are seriously weird in MySQL. Honestly, avoid them.
-  *** 4.1 especially contains oddities: (http://dev.mysql.com/doc/refman/4.1/en/timestamp.html)
-
- * Further Reading:
- ** http://dev.mysql.com/doc/refman/5.0/en/upgrading-from-previous-series.html */
-
-
-/* PostGreSQL (better list @ http://www.postgresql.org/about/featurematrix/)
- * 8.0: savepoints, ability to alter column type, table spaces
- * 8.1: Two-phase commit, new permissions system,
- * 8.2: RETURNING, nulls in arrays,
- * 8.3: Full text search, XML, ENUM data types, UUID type,
- * 8.4: Column permissions, per-database locale,
- * 9.0: 64-bit WIN support, better LISTEN/NOTIFY perfrmance, per-column triggers
- * 9.1: Sync. replication, foreign tables,
- * 9.2: Index-only scans, cascading replication, range data types, JSON data type,
+/**
+ * A SQL implementation of {@see Database}.
+ * Note that DatabaseSQL, unlike {@see Database}, has only partial support for adding new SQL variants. While much functionality is supported through the {@link DatabaseSQLInterface} implementations, in general a lot of per-driver functionality must still be added in this file.
+ *
+ * @package Database\SQL
  */
-
 class DatabaseSQL extends Database
 {
     public $classVersion = 3;
@@ -1925,16 +1843,26 @@ class DatabaseSQL extends Database
         return $return;
     }
 
+
+    /**
+     * @return array The current SQL statements set to run when {@see DatabaseSQL::holdTriggers()} is set to off.
+     */
     public function getTriggerQueue() {
         return $this->triggerQueue;
     }
 
 
+    /**
+     * @return array A list of tables in the current database.
+     */
     public function getTablesAsArray(): array {
         return array_map('strtolower', $this->sqlInterface->getTablesAsArray($this));
     }
 
 
+    /**
+     * @return array The table columns in the current database, grouped by table.
+     */
     public function getTableColumnsAsArray(): array {
         return array_change_key_case(
             $this->sqlInterface->getTableColumnsAsArray($this), CASE_LOWER
@@ -1942,6 +1870,9 @@ class DatabaseSQL extends Database
     }
 
 
+    /**
+     * @return array The table constraints in the current database, grouped by table.
+     */
     public function getTableConstraintsAsArray(): array {
         return array_change_key_case(
             $this->sqlInterface->getTableConstraintsAsArray($this), CASE_LOWER
@@ -1949,6 +1880,9 @@ class DatabaseSQL extends Database
     }
 
 
+    /**
+     * @return array The table indexes in the current database, grouped by table.
+     */
     public function getTableIndexesAsArray(): array {
         return array_change_key_case(
             $this->sqlInterface->getTableIndexesAsArray($this), CASE_LOWER
@@ -1966,6 +1900,10 @@ class DatabaseSQL extends Database
      ******************** Row Functions **********************
      *********************************************************/
 
+
+    /**
+     * @see Database::select()
+     */
     public function select($columns, $conditionArray = false, $sort = false, $limit = false, $page = 0)
     {
         /* Define Variables */
@@ -2486,13 +2424,21 @@ class DatabaseSQL extends Database
     }
 
 
+    /**
+     * @see Database::getLastInsertId()
+     */
     public function getLastInsertId()
     {
         return $this->sqlInterface->getLastInsertId();
     }
 
 
-    public function insertIdCallback($table)
+    /**
+     * Perform the standard callback following insertion into a table.
+     *
+     * @param string $table The table that has been inserted into.
+     */
+    private function insertIdCallback($table)
     {
         /* Transform code for insert ID
          * If we are supposed to copy over an insert ID into a new, transformed column, we do it here. */
@@ -2510,7 +2456,17 @@ class DatabaseSQL extends Database
     }
 
 
-    private function insertCore($tableName, $dataArray, $originalTableName = false)
+    /**
+     * Performs the core, SQL-only part of insertion, without concern for partitioning, collection triggers, etc.
+     * @see DatabaseSQL::insert()
+     *
+     * @param string $tableName {@see DatabaseSQL::insert()}
+     * @param mixed  $dataArray {@see DatabaseSQL::insert()}
+     *
+     * @return bool
+     * @throws Exception
+     */
+    private function insertCore($tableName, $dataArray)
     {
         /* Actual Insert */
         $columns = array_keys($dataArray);
@@ -2545,6 +2501,9 @@ class DatabaseSQL extends Database
     }
 
 
+    /**
+     * @see Database::delete()
+     */
     public function delete($tableName, $conditionArray = false)
     {
         $originalTableName = $tableName;
@@ -2596,6 +2555,17 @@ class DatabaseSQL extends Database
     }
 
 
+    /**
+     * Performs the core, SQL-only part of deletion, without concern for partitioning, collection triggers, etc.
+     * @see DatabaseSQL::delete()
+     *
+     * @param string $tableName {@see DatabaseSQL::delete()}
+     * @param mixed  $conditionArray {@see DatabaseSQL::delete()}
+     * @param mixed  $originalTableName If the table name has been changed for partitioning, pass this as the original table name, used for analysing the condition array.
+     *
+     * @return bool
+     * @throws Exception
+     */
     private function deleteCore($tableName, $conditionArray = false, $originalTableName = false)
     {
         return $this->rawQuery(
@@ -2605,6 +2575,9 @@ class DatabaseSQL extends Database
     }
 
 
+    /**
+     * @see Database::update()
+     */
     public function update($tableName, $dataArray, $conditionArray = [])
     {
         $originalTableName = $tableName;

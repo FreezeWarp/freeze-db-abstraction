@@ -2,7 +2,15 @@
 
 namespace Database;
 
+/**
+ * A faux-enum containing the different value types supported by the Database layer.
+ *
+ * @package Database
+ */
 class DatabaseTypeType {
+    /**
+     * The default value, string.
+     */
     const __default = self::string;
 
     /**
@@ -76,7 +84,7 @@ class DatabaseTypeType {
     const equation = 'equation';
 
     /**
-     * A JSON-formatted string.
+     * A JSON-formatted string. The contents of this will not generally be checked, except by certain database drivers.
      */
     const json = 'json';
 }

@@ -1,6 +1,12 @@
 <?php
+
 namespace Database;
 
+/**
+ * A result returned from {@see Database::select()} that can be used to obtain arrays of result data, or obtain metadata about the result.
+ *
+ * @package Database
+ */
 class DatabaseResult
 {
     /**
@@ -41,10 +47,10 @@ class DatabaseResult
     /**
      * Construct
      *
-     * @param object $queryData - The database object.
+     * @param object $queryData   - The database object.
      * @param string $sourceQuery - The source query, which can be stored for referrence.
+     *
      * @return void
-     * @author Joseph Todd Parsons <josephtparsons@gmail.com>
      */
     public function __construct(DatabaseResultInterface $queryData, $reverseAlias, $sourceQuery, Database $database, int $resultLimit = 0)
     {
@@ -75,7 +81,8 @@ class DatabaseResult
     /**
      * @return mixed The next array of data from the result object, or false if no more are available.
      */
-    public function fetchAsArray() {
+    public function fetchAsArray()
+    {
         if ($this->resultIndex++ >= $this->count) {
             return false;
         }
@@ -88,14 +95,13 @@ class DatabaseResult
      * Get database resultset as a single associative array or multiple associative arrays. An empty array will be returned if an error occurs.
      *
      * @param bool|string $index When this is a string, it corresponds to a column whose value will be used to index the returned arrays. When it is true, the returned arrays will be indexed automatically, starting at 0. When it is false, only one array will be returned.
-     * @param bool $group If true, results will be grouped by the index, e.g. if you group on "entries", [1 => [["id" => 1, "entries" => 1], ["id" => 2, "entries" => 1]]] will be returned. If $group were false, [1 => ["id" => 1, "entries" => 1]] would be returned instead.
+     * @param bool        $group If true, results will be grouped by the index, e.g. if you group on "entries", [1 => [["id" => 1, "entries" => 1], ["id" => 2, "entries" => 1]]] will be returned. If $group were false, [1 => ["id" => 1, "entries" => 1]] would be returned instead.
      *
      * @return array
-     * @author Joseph Todd Parsons <josephtparsons@gmail.com>
      */
     public function getAsArray($index = true, $group = false)
     {
-        $data = array();
+        $data = [];
 
         $rowNumber = 0; // Count the number of results processed, ensuring we don't exceed $this->count.
         $indexV = 0;
@@ -119,7 +125,7 @@ class DatabaseResult
                     }
 
                     else { // If the index is not boolean "true", we instead get the column value of the index/column name.
-                        $index = (array) $index;
+                        $index = (array)$index;
 
                         $ref =& $data;
                         for ($i = 1; $i <= count($index); $i++) {
@@ -146,20 +152,42 @@ class DatabaseResult
                     }
                 }
 
-                return (!$return ? array() : $return);
+                return (!$return ? [] : $return);
             }
         }
 
         else {
-            return array(); // Query data is false or null, return an empty array.
+            return []; // Query data is false or null, return an empty array.
         }
     }
 
 
+    /**
+     * Get a single value from the current resultset.
+     *
+     * @param $column string The column's value to get.
+     *
+     * @return mixed
+     */
+    public function getColumnValue($column)
+    {
+        $row = $this->fetchAsArray();
+
+        return $this->applyColumnTransformation($column, $row[$column]);
+    }
+
+
+    /**
+     * Get an array of values from specific columns. If more than one column is passed, the result will be grouped in order of columns. For instance, if four columns are passed, the result will be a four-dimensional array, indexed first by the first column, second by the second column, and so-on.
+     *
+     * @param $columns array The list of columns whose values should be retrieved.
+     *
+     * @return array
+     */
     public function getColumnValues($columns)
     {
-        $columnValues = array();
-        $columns = (array) $columns;
+        $columnValues = [];
+        $columns = (array)$columns;
 
         while ($row = $this->fetchAsArray()) {
             $ref =& $columnValues;
@@ -177,13 +205,14 @@ class DatabaseResult
      * Get only specific columns from the current resultset, as a three dimensional array.
      *
      * @param $columns array An array of columns to include in the response.
-     * @param $index string Optionally, a column to use for array indexing. If omitted, the outer array will be indexed sequentially.
+     * @param $index   string Optionally, a column to use for array indexing. If omitted, the outer array will be indexed sequentially.
      *
      * @return mixed
      */
-    public function getAsSlicedArray($columns, $index = false) {
-        $columnValues = array();
-        $columns = (array) $columns;
+    public function getAsSlicedArray($columns, $index = null)
+    {
+        $columnValues = [];
+        $columns = (array)$columns;
 
         while ($row = $this->fetchAsArray()) {
             $rowColumnValues = [];
@@ -203,21 +232,47 @@ class DatabaseResult
 
 
     /**
-     * Get a single value from the current resultset.
+     * Get the database object as a string, using the specified format/template. Each result will be passed to this template and stored in a string, which will be appended to the entire result.
+     * Use standard PHP notation on column names, e.g. "$id - $name".
      *
-     * @param $column string The column's value to get.
+     * @param string $format
      *
      * @return mixed
      */
-    public function getColumnValue($column)
+    public function getAsTemplate($format)
     {
-        $row = $this->fetchAsArray();
+        $data = '';
+        $uid = 0;
 
-        return $this->applyColumnTransformation($column, $row[$column]);
+        if ($this->queryData !== false && $this->queryData !== null) {
+            while (false !== ($row = $this->fetchAsArray())) { // Process through all rows.
+                $uid++;
+                $row['uid'] = $uid; // UID is a variable that can be used as the row number in the template.
+
+                $data .= preg_replace_callback('/\$([a-zA-Z0-9]+)/', function ($matches) use ($row) {
+                    return $row[$matches[1]];
+                }, $format);
+            }
+
+            return $data;
+        }
+
+        else {
+            return false; // Query data is false or null, return false.
+        }
     }
 
 
-    public function applyColumnTransformation($column, $value) {
+    /**
+     * Checks to see if a given column is supposed to be encoded, and returns the encoded value if so.
+     *
+     * @param string $column The column name in the resultset.
+     * @param string $value  The column value returned by the database.
+     *
+     * @return mixed The column value, encoded if applicable.
+     */
+    private function applyColumnTransformation($column, $value)
+    {
         if (isset($this->reverseAlias[$column])) {
             $tableName = $this->reverseAlias[$column][0];
 
@@ -233,37 +288,6 @@ class DatabaseResult
             return $value;
         }
     }
-
-
-    /**
-     * Get the database object as a string, using the specified format/template. Each result will be passed to this template and stored in a string, which will be appended to the entire result.
-     * Use standard PHP notation on column names, e.g. "$id - $name".
-     *
-     * @param string $format
-     * @return mixed
-     * @author Joseph Todd Parsons <josephtparsons@gmail.com>
-     */
-    public function getAsTemplate($format)
-    {
-        $data = '';
-        $uid = 0;
-
-        if ($this->queryData !== false && $this->queryData !== null) {
-            while (false !== ($row = $this->fetchAsArray())) { // Process through all rows.
-                $uid++;
-                $row['uid'] = $uid; // UID is a variable that can be used as the row number in the template.
-
-                $data .= preg_replace_callback('/\$([a-zA-Z0-9]+)/', function($matches) use ($row) {
-                    return $row[$matches[1]];
-                }, $format);
-            }
-
-            return $data;
-        }
-
-        else {
-            return false; // Query data is false or null, return false.
-        }
-    }
 }
+
 ?>

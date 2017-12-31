@@ -6,6 +6,24 @@ use Database\DatabaseEngine;
 use Database\DatabaseTypeType;
 use Database\DatabaseIndexType;
 
+/**
+ * The conventions of the PostgreSQL DBMS.
+ *
+ * The following is a PostgreSQL version support list (better list @ http://www.postgresql.org/about/featurematrix/):
+ * * 8.0: savepoints, ability to alter column type, table spaces
+ * * 8.1: Two-phase commit, new permissions system,
+ * * 8.2: RETURNING, nulls in arrays,
+ * * 8.3: Full text search, XML, ENUM data types, UUID type,
+ * * 8.4: Column permissions, per-database locale,
+ * * 9.0: 64-bit WIN support, better LISTEN/NOTIFY perfrmance, per-column triggers
+ * * 9.1: Sync. replication, foreign tables,
+ * * 9.2: Index-only scans, cascading replication, range data types, JSON data type,
+ * * 9.3: Large objects can be up to 4TB (instead of 2GB), better JSON functions, event triggers
+ * * 9.4: JSONB
+ * * 9.5: Unlogged tables, JSONB functions, ON CONFLICT (i.e. upsert)
+ *
+ * @package Database\SQL
+ */
 class DatabaseSQLPgsql extends DatabaseSQLStandard {
     use DatabaseReconnectOnSelectDatabaseTrait;
 

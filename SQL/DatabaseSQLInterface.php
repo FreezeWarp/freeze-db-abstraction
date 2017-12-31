@@ -1,6 +1,11 @@
 <?php
 namespace Database\SQL;
 
+/**
+ * The interface all DatabaseSQL drivers should implement.
+ *
+ * @package Database\SQL
+ */
 interface DatabaseSQLInterface {
     /**
      * Connect to a remote (or local) database server with a known host, port, username, and password.

@@ -5,6 +5,12 @@ use Database\DatabaseResultInterface;
 use Database\DatabaseEngine;
 use Database\DatabaseTypeType;
 
+/**
+ * The conventions of Microsoft's SQL Server DBMS.
+ * This driver is still largely experimental; it will have quirks.
+ *
+ * @package Database\SQL
+ */
 class DatabaseSQLSqlsrv extends DatabaseSQLStandard {
 
     /**

@@ -1,6 +1,9 @@
 <?php
 namespace Database\SQL;
 
+/**
+ * The conventions of any driver that doesn't have the ability to set the active database after especially a connection.
+ */
 trait DatabaseReconnectOnSelectDatabaseTrait {
     protected $connectionUser;
     protected $connectionPassword;
