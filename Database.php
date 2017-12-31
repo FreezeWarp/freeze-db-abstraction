@@ -15,6 +15,8 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>. */
 
 namespace Database;
+use Database\Type\Comparison;
+use Database\Type;
 use Exception;
 
 /**
@@ -628,8 +630,8 @@ abstract class Database
      *
      * ```php
      * $db->createTableIndexes('table1', [
-     *   'column1,column2' => DatabaseIndexType::index,
-     *   'column3' => DatabaseIndexType::unique
+     *   'column1,column2' => DatabaseIndexType\Type::index,
+     *   'column3' => DatabaseIndexType\Type::unique
      * ]);
      * ```
      *
@@ -1008,7 +1010,7 @@ abstract class Database
 
     protected function isTypeObject($type)
     {
-        return (is_object($type) && ($type instanceof DatabaseType));
+        return (is_object($type) && ($type instanceof Type));
     }
 
     /**
@@ -1036,57 +1038,57 @@ abstract class Database
      *   - Note that minimal casting actually occurs here, and should instead be performed by the select() function in each implementation. Instead, it simply ensures that basic PHP typing is present: integer for integers and timestamps, strings for strings and columns, arrays for arrays, and floats for floats.
      *   - The type and equality operations will always maintain their shorter string equivilents, as it makes it easier to write the code, but using the DatabaseTypeComparison and DatabaseTypeType operations is still recommended.
      *
-     * @return DatabaseType A special representation of a column int only for use in database functions.
+     * @return Type A special representation of a column int only for use in database functions.
      */
-    public function type($type, $value = '', $comp = DatabaseTypeComparison::equals)
+    public function type($type, $value = '', $comp = Comparison::equals)
     {
         // TODO: get rid of all this.
         switch ($type) {
-            case 'integer': case DatabaseTypeType::integer:
-                return new DatabaseType(DatabaseTypeType::integer, (int)$value, $comp);
+            case 'integer': case Type\Type::integer:
+                return new Type(Type\Type::integer, (int)$value, $comp);
                 break;
 
-            case 'ts': case DatabaseTypeType::timestamp:
-                return new DatabaseType(DatabaseTypeType::timestamp, (int)$value, $comp);
+            case 'ts': case Type\Type::timestamp:
+                return new Type(Type\Type::timestamp, (int)$value, $comp);
                 break;
 
-            case 'str': case DatabaseTypeType::string:
-                return new DatabaseType(DatabaseTypeType::string, (string)$value, $comp);
+            case 'str': case Type\Type::string:
+                return new Type(Type\Type::string, (string)$value, $comp);
                 break;
 
-            case 'col': case DatabaseTypeType::column:
-                return new DatabaseType(DatabaseTypeType::column, (string)$value, $comp);
+            case 'col': case Type\Type::column:
+                return new Type(Type\Type::column, (string)$value, $comp);
                 break;
 
-            case DatabaseTypeType::float:
-                return new DatabaseType(DatabaseTypeType::float, (string)$value, $comp);
+            case Type\Type::float:
+                return new Type(Type\Type::float, (string)$value, $comp);
                 break;
 
-            case DatabaseTypeType::bool:
-                return new DatabaseType(DatabaseTypeType::bool, (bool)$value, DatabaseTypeComparison::equals);
+            case Type\Type::bool:
+                return new Type(Type\Type::bool, (bool)$value, Comparison::equals);
                 break;
 
-            case 'bit': case DatabaseTypeType::bitfield:
-                return new DatabaseType(DatabaseTypeType::bitfield, (int)$value, $comp);
+            case 'bit': case Type\Type::bitfield:
+                return new Type(Type\Type::bitfield, (int)$value, $comp);
             break;
 
-            case 'empty': case DatabaseTypeType::null:
-                return new DatabaseType(DatabaseTypeType::null, DatabaseType::null, DatabaseTypeComparison::equals);
+            case 'empty': case Type\Type::null:
+                return new Type(Type\Type::null, Type\Type::null, Comparison::equals);
                 break;
 
-            case DatabaseTypeType::equation:
-                return new DatabaseType(DatabaseTypeType::equation, (string)$value, $comp);
+            case Type\Type::equation:
+                return new Type(Type\Type::equation, (string)$value, $comp);
                 break;
 
-            case 'binary': case DatabaseTypeType::blob:
-                return new DatabaseType(DatabaseTypeType::blob, $value, $comp);
+            case 'binary': case Type\Type::blob:
+                return new Type(Type\Type::blob, $value, $comp);
                 break;
 
-            case 'arr': case 'array': case DatabaseTypeType::arraylist:
+            case 'arr': case 'array': case Type\Type::arraylist:
                 if (count($value) === 0)
                     $this->triggerError('An empty array was specified.', false, 'validationFallback');
 
-                return new DatabaseType(DatabaseTypeType::arraylist, (array)$value, $comp);
+                return new Type(Type\Type::arraylist, (array)$value, $comp);
                 break;
 
             default:
@@ -1099,104 +1101,113 @@ abstract class Database
      * An in-array operation. Shorthand for type('arr', $value, 'in')
      *
      * @param $mixed value
-     * @return DatabaseType
+     *
+     * @return Type
      */
     public function in($value)
     {
-        return $this->type(DatabaseTypeType::arraylist, $value, DatabaseTypeComparison::in);
+        return $this->type(Type\Type::arraylist, $value, Comparison::in);
     }
 
     /**
      * A value is a bitfield.
      *
      * @param $mixed value
-     * @return DatabaseType
+     *
+     * @return Type
      */
-    public function bit($value, $comp = DatabaseTypeComparison::equals)
+    public function bit($value, $comp = Comparison::equals)
     {
-        return $this->type(DatabaseTypeType::bitfield, $value, $comp);
+        return $this->type(Type\Type::bitfield, $value, $comp);
     }
 
     /**
      * A search (substring) operation. Shorthand for type('string', $value, 'search')
      *
      * @param mixed $value
-     * @return DatabaseType
+     *
+     * @return Type
      */
     public function search($value)
     {
-        return $this->type(DatabaseTypeType::string, $value, DatabaseTypeComparison::search);
+        return $this->type(Type\Type::string, $value, Comparison::search);
     }
 
     /**
      * A search (fulltext) operation. Shorthand for type('string', $value, 'fulltextSearch')
      *
      * @param mixed $value
-     * @return DatabaseType
+     *
+     * @return Type
      */
     public function fulltextSearch($value)
     {
-        return $this->type(DatabaseTypeType::string, $value, DatabaseTypeComparison::fulltextSearch);
+        return $this->type(Type\Type::string, $value, Comparison::fulltextSearch);
     }
 
     /**
      * A boolean value. Shorthand for type('bool', $value)
      *
      * @param mixed $value
-     * @return DatabaseType
+     *
+     * @return Type
      */
     public function bool($value)
     {
-        return $this->type(DatabaseTypeType::bool, $value);
+        return $this->type(Type\Type::bool, $value);
     }
 
     /**
      * A blob value. Shorthand for type('blob', $value)
      *
      * @param mixed $value
-     * @return DatabaseType
+     *
+     * @return Type
      */
     public function blob($value)
     {
-        return $this->type(DatabaseTypeType::blob, $value);
+        return $this->type(Type\Type::blob, $value);
     }
 
     /**
      * An integer comparison. Shorthand for type('int', $value, $comp)
      *
-     * @param mixed $value
+     * @param mixed  $value
      * @param string $comp
-     * @return DatabaseType
+     *
+     * @return Type
      */
-    public function int($value, $comp = DatabaseTypeComparison::equals)
+    public function int($value, $comp = Comparison::equals)
     {
-        return $this->type(DatabaseTypeType::integer, $value, $comp);
+        return $this->type(Type\Type::integer, $value, $comp);
     }
 
 
     /**
      * A floating-point comparison. Shorthand for type('float', $value, $comp)
      *
-     * @param mixed $value
+     * @param mixed  $value
      * @param string $comp
-     * @return DatabaseType
+     *
+     * @return Type
      */
-    public function float($value, $comp = DatabaseTypeComparison::equals)
+    public function float($value, $comp = Comparison::equals)
     {
-        return $this->type(DatabaseTypeType::float, $value, $comp);
+        return $this->type(Type\Type::float, $value, $comp);
     }
 
 
     /**
      * A timestamp comparison. Shorthand for type('ts', $value, $comp)
      *
-     * @param mixed $value
+     * @param mixed  $value
      * @param string $comp
-     * @return DatabaseType
+     *
+     * @return Type
      */
-    public function ts($value, $comp = DatabaseTypeComparison::equals)
+    public function ts($value, $comp = Comparison::equals)
     {
-        return $this->type(DatabaseTypeType::timestamp, $value, $comp);
+        return $this->type(Type\Type::timestamp, $value, $comp);
     }
 
 
@@ -1205,9 +1216,10 @@ abstract class Database
      *
      * @param mixed $offset If positive, this many seconds in the future. If negative, this many seconds in the past.
      * @param string $comp
-     * @return DatabaseType
+     *
+     * @return Type
      */
-    public function now($offset = 0, $comp = DatabaseTypeComparison::equals)
+    public function now($offset = 0, $comp = Comparison::equals)
     {
         return $this->ts(time() + $offset, $comp);
     }
@@ -1218,11 +1230,12 @@ abstract class Database
      *
      * @param mixed $value
      * @param string $comp
-     * @return DatabaseType
+     *
+     * @return Type
      */
-    public function str($value, $comp = DatabaseTypeComparison::equals)
+    public function str($value, $comp = Comparison::equals)
     {
-        return $this->type(DatabaseTypeType::string, (string)$value, $comp);
+        return $this->type(Type\Type::string, (string)$value, $comp);
     }
 
 
@@ -1231,11 +1244,12 @@ abstract class Database
      *
      * @param mixed $value
      * @param string $comp
-     * @return DatabaseType
+     *
+     * @return Type
      */
-    public function col($value, $comp = DatabaseTypeComparison::equals)
+    public function col($value, $comp = Comparison::equals)
     {
-        return $this->type(DatabaseTypeType::column, $value, $comp);
+        return $this->type(Type\Type::column, $value, $comp);
     }
 
 
@@ -1244,10 +1258,11 @@ abstract class Database
      *
      * @param mixed $value
      * @param string $comp
-     * @return DatabaseType
+     *
+     * @return Type
      */
     public function equation($value) {
-        return $this->type(DatabaseTypeType::equation, $value);
+        return $this->type(Type\Type::equation, $value);
     }
 
 
@@ -1256,23 +1271,29 @@ abstract class Database
      *
      * @param mixed $value
      * @param string $comp
-     * @return DatabaseType
+     *
+     * @return Type
      */
-    public function null($comp = DatabaseTypeComparison::equals)
+    public function null($comp = Comparison::equals)
     {
-        return $this->type(DatabaseTypeType::null, null, $comp);
+        return $this->type(Type\Type::null, null, $comp);
     }
 
 
 
 
+    /**
+     * @param $value
+     *
+     * @return Type
+     */
     public function auto($value) {
         if ($this->isTypeObject($value))
             return $value;
         elseif ($value === true || $value === false)
             return $this->bool($value);
         elseif ($value === '' || $value === null)
-            return $this->type(DatabaseTypeType::null);
+            return $this->type(Type\Type::null);
         elseif (is_int($value) || (strlen($value) < 12 && ctype_digit($value)))
             return $this->int($value);
         else
@@ -1286,24 +1307,25 @@ abstract class Database
 
     /**
      * Applies $function to the $data. If $data is an instance of DatabaseType, its other values will be retained, though its type may change if $forceType is set to one of the DatabaseTypeType values.
-     * If $data was not an instance of DatabaseType, it will be returned as one, with $forceType or DatabaseTypeType::string as its type, and DatabaseTypeComparison::equals as its comparison operator.
+     * If $data was not an instance of DatabaseType, it will be returned as one, with $forceType or DatabaseTypeType\Type::string as its type, and DatabaseTypeComparison::equals as its comparison operator.
      *
-     * @param callable $function
-     * @param mixed|DatabaseType $data
-     * @param bool|DatabaseTypeType $forceType
-     * @return DatabaseType
+     * @param callable   $function
+     * @param mixed|Type $data
+     * @param bool|Type  $forceType
+     *
+     * @return Type
      * @throws Exception
      */
-    protected function applyTransformFunction($function, $data, $forceType = false): DatabaseType {
+    protected function applyTransformFunction($function, $data, $forceType = false): Type {
         // If $data is an instance of DatabaseType...
         if ($this->isTypeObject($data)) {
             // Equations and columns cannot be transformed.
-            if ($data->type === DatabaseTypeType::equation || $data->type === DatabaseTypeType::column) {
+            if ($data->type === Type\Type::equation || $data->type === Type\Type::column) {
                 throw new Exception('Database data transformation attempted on unsuported object.');
             }
 
             // Lists are fancy -- we trasnsform the elements of the list recursively. The elements can be of any type that can be passed to applyTransformFunction normally.
-            elseif ($data->type === DatabaseTypeType::arraylist) {
+            elseif ($data->type === Type\Type::arraylist) {
                 foreach ($data->value AS &$value) {
                     $value = $this->applyTransformFunction($function, $value, $forceType);
                 }
@@ -1313,13 +1335,13 @@ abstract class Database
 
             // All other values apply the function and, if $forceType is set, the relevant datatype. The comparison operator is not changed.
             else {
-                return new DatabaseType(($forceType ? $forceType : $data->type), call_user_func($function, $data->value), $data->comparison);
+                return new Type(($forceType ? $forceType : $data->type), call_user_func($function, $data->value), $data->comparison);
             }
         }
 
-        // If $data isn't an instance of DatabaseType, set it to one, with $forceType or DatabaseTypeType::string as its type, and DatabaseTypeComparison::equals as its comparison operator.
+        // If $data isn't an instance of DatabaseType, set it to one, with $forceType or DatabaseTypeType\Type::string as its type, and DatabaseTypeComparison::equals as its comparison operator.
         else {
-            return new DatabaseType(($forceType ? $forceType : DatabaseTypeType::string), call_user_func($function, $data), DatabaseTypeComparison::equals);
+            return new Type(($forceType ? $forceType : Type\Type::string), call_user_func($function, $data), Comparison::equals);
         }
     }
 
@@ -1338,12 +1360,5 @@ abstract class Database
      */
     abstract protected function databaseResultPipe($queryData, $reverseAlias, string $sourceQuery, Database $database, int $paginated = 0);
 }
-
-require('DatabaseResult.php');
-require('DatabaseEngine.php');
-require('DatabaseIndexType.php');
-require('DatabaseType.php');
-require('DatabaseTypeType.php');
-require('DatabaseTypeComparison.php');
 
 ?>

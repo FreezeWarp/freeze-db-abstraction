@@ -3,8 +3,8 @@ namespace Database\SQL;
 
 use Database\DatabaseResultInterface;
 use Database\DatabaseEngine;
-use Database\DatabaseTypeType;
-use Database\DatabaseIndexType;
+use Database\Type;
+use Database\Index;
 
 /**
  * The conventions of the PostgreSQL DBMS.
@@ -66,11 +66,11 @@ class DatabaseSQLPgsql extends DatabaseSQLStandard {
             63 => 'BIGINT',
             'default' => 'INTEGER',
         ),
-        DatabaseTypeType::float => 'REAL',
-        DatabaseTypeType::bool => 'SMALLINT', // TODO: ENUM(1,2) AS BOOLENUM better.
-        DatabaseTypeType::timestamp => 'INTEGER',
-        DatabaseTypeType::blob => 'BYTEA',
-        DatabaseTypeType::json => 'JSONB',
+        Type\Type::float       => 'REAL',
+        Type\Type::bool        => 'SMALLINT', // TODO: ENUM(1,2) AS BOOLENUM better.
+        Type\Type::timestamp   => 'INTEGER',
+        Type\Type::blob        => 'BYTEA',
+        Type\Type::json        => 'JSONB',
     );
 
     public $concatTypes = array(
@@ -78,10 +78,10 @@ class DatabaseSQLPgsql extends DatabaseSQLStandard {
     );
 
     public $keyTypeConstants = array(
-        DatabaseIndexType::fulltext => '',
-        DatabaseIndexType::primary => 'PRIMARY',
-        DatabaseIndexType::unique => 'UNIQUE',
-        DatabaseIndexType::index => '',
+        Index\Type::fulltext => '',
+        Index\Type::primary  => 'PRIMARY',
+        Index\Type::unique   => 'UNIQUE',
+        Index\Type::index    => '',
     );
 
     public $enumMode = 'useCreateType';
@@ -154,7 +154,7 @@ class DatabaseSQLPgsql extends DatabaseSQLStandard {
     }
 
     public function escape($text, $context) {
-        if ($context === DatabaseTypeType::blob)
+        if ($context === Type::blob)
             return pg_escape_bytea($this->connection, $text);
         else
             return pg_escape_string($this->connection, $text);
@@ -247,21 +247,21 @@ class DatabaseSQLPgsql extends DatabaseSQLStandard {
 
     public function getTablesAsArray(DatabaseSQL $database) {
         return $database->rawQueryReturningResult('SELECT * FROM information_schema.tables WHERE table_catalog = '
-            . $database->formatValue(DatabaseTypeType::string, $database->activeDatabase)
+            . $database->formatValue(Type::string, $database->activeDatabase)
             . ' AND table_type = \'BASE TABLE\' AND table_schema NOT IN (\'pg_catalog\', \'information_schema\')'
         )->getColumnValues('table_name');
     }
 
     public function getTableColumnsAsArray(DatabaseSQL $database) {
         return $database->rawQueryReturningResult('SELECT * FROM information_schema.columns WHERE table_catalog = '
-            . $database->formatValue(DatabaseTypeType::string, $database->activeDatabase)
+            . $database->formatValue(Type::string, $database->activeDatabase)
             . ' AND table_schema NOT IN (\'pg_catalog\', \'information_schema\')'
         )->getColumnValues(['table_name', 'column_name']);
     }
 
     public function getTableConstraintsAsArray(DatabaseSQL $database) {
         return $database->rawQueryReturningResult('SELECT * FROM information_schema.table_constraints WHERE table_catalog = '
-            . $database->formatValue(DatabaseTypeType::string, $database->activeDatabase)
+            . $database->formatValue(Type::string, $database->activeDatabase)
             . ' AND table_schema NOT IN (\'pg_catalog\', \'information_schema\')'
             . ' AND (constraint_type = \'FOREIGN KEY\' OR constraint_type = \'PRIMARY KEY\')'
         )->getColumnValues(['table_name', 'constraint_name']);

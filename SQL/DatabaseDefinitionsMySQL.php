@@ -2,7 +2,7 @@
 namespace Database\SQL;
 
 use Database\DatabaseEngine;
-use Database\DatabaseTypeType;
+use Database\Type;
 
 /**
  * The conventions of all MySQL-language drivers.
@@ -127,11 +127,11 @@ abstract class DatabaseDefinitionsMySQL extends DatabaseSQLStandard {
             'default' => 'INTEGER UNSIGNED',
         ),
 
-        DatabaseTypeType::float => 'REAL',
-        DatabaseTypeType::bool => 'BIT(1)',
-        DatabaseTypeType::timestamp => 'INTEGER UNSIGNED',
-        DatabaseTypeType::blob => 'BLOB',
-        DatabaseTypeType::json => false,
+        Type\Type::float     => 'REAL',
+        Type\Type::bool      => 'BIT(1)',
+        Type\Type::timestamp => 'INTEGER UNSIGNED',
+        Type\Type::blob      => 'BLOB',
+        Type\Type::json      => false,
     );
 
     /**
@@ -180,7 +180,7 @@ abstract class DatabaseDefinitionsMySQL extends DatabaseSQLStandard {
         return $database->rawQueryReturningResult('SELECT * FROM '
             . $database->formatValue(DatabaseSQL::FORMAT_VALUE_DATABASE_TABLE, 'INFORMATION_SCHEMA', 'TABLES')
             . ' WHERE TABLE_SCHEMA = '
-            . $database->formatValue(DatabaseTypeType::string, $database->activeDatabase)
+            . $database->formatValue(Type\Type::string, $database->activeDatabase)
         )->getColumnValues('TABLE_NAME');
     }
 
@@ -188,7 +188,7 @@ abstract class DatabaseDefinitionsMySQL extends DatabaseSQLStandard {
         return $database->rawQueryReturningResult('SELECT * FROM '
             . $database->formatValue(DatabaseSQL::FORMAT_VALUE_DATABASE_TABLE, 'INFORMATION_SCHEMA', 'COLUMNS')
             . ' WHERE TABLE_SCHEMA = '
-            . $database->formatValue(DatabaseTypeType::string, $database->activeDatabase)
+            . $database->formatValue(Type\Type::string, $database->activeDatabase)
         )->getColumnValues(['TABLE_NAME', 'COLUMN_NAME']);
     }
 
@@ -196,7 +196,7 @@ abstract class DatabaseDefinitionsMySQL extends DatabaseSQLStandard {
         return $database->rawQueryReturningResult('SELECT * FROM '
             . $database->formatValue(DatabaseSQL::FORMAT_VALUE_DATABASE_TABLE, 'INFORMATION_SCHEMA', 'KEY_COLUMN_USAGE')
             . ' WHERE TABLE_SCHEMA = '
-            . $database->formatValue(DatabaseTypeType::string, $database->activeDatabase)
+            . $database->formatValue(Type\Type::string, $database->activeDatabase)
             . ' AND REFERENCED_TABLE_NAME IS NOT NULL'
         )->getColumnValues(['TABLE_NAME', 'CONSTRAINT_NAME']);
     }
@@ -205,7 +205,7 @@ abstract class DatabaseDefinitionsMySQL extends DatabaseSQLStandard {
         return $database->rawQueryReturningResult('SELECT * FROM '
             . $database->formatValue(DatabaseSQL::FORMAT_VALUE_DATABASE_TABLE, 'INFORMATION_SCHEMA', 'STATISTICS')
             . ' WHERE TABLE_SCHEMA = '
-            . $database->formatValue(DatabaseTypeType::string, $database->activeDatabase)
+            . $database->formatValue(Type\Type::string, $database->activeDatabase)
         )->getColumnValues(['TABLE_NAME', 'INDEX_NAME']);
     }
 

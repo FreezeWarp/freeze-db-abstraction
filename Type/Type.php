@@ -1,13 +1,13 @@
 <?php
 
-namespace Database;
+namespace Database\Type;
 
 /**
  * A faux-enum containing the different value types supported by the Database layer.
  *
  * @package Database
  */
-class DatabaseTypeType {
+class Type {
     /**
      * The default value, string.
      */

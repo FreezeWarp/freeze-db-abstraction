@@ -6,10 +6,10 @@ use PDOStatement;
 use Exception;
 
 use Database\DatabaseResultInterface;
-use Database\DatabaseIndexType;
+use Database\Index;
 use Database\DatabaseEngine;
-use Database\DatabaseTypeType;
-use Database\DatabaseTypeComparison;
+use Database\Type;
+use Database\Type\Comparison;
 
 /**
  * The conventions of all PDO drivers.
@@ -51,17 +51,17 @@ trait DatabasePDOTrait {
 
     public function escape($text, $context) {
         switch ($context) {
-            case DatabaseTypeType::integer:
-            case DatabaseTypeType::timestamp:
-            case DatabaseTypeType::bitfield:
-            case DatabaseTypeType::float:
-            case DatabaseTypeType::blob:
-            case DatabaseTypeType::string:
+            case Type\Type::integer:
+            case Type\Type::timestamp:
+            case Type\Type::bitfield:
+            case Type\Type::float:
+            case Type\Type::blob:
+            case Type\Type::string:
                 $this->preparedParams[] = $text;
                 return '?';
             break;
 
-            case DatabaseTypeType::search:
+            case Type\Type::search:
                 $this->preparedParams[] = '%' . $text . '%';
                 return '?';
             break;

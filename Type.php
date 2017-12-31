@@ -1,20 +1,21 @@
 <?php
 namespace Database;
 
+use Database\Type\Comparison;
 use Exception;
 
-class DatabaseType {
+class Type {
     const null = null;
 
     public $type;
     public $value;
     public $comparison;
 
-    public function __construct($type, $value, $comparison = DatabaseTypeComparison::__default) {
+    public function __construct($type, $value, $comparison = Comparison::__default) {
         /* Validation Checks */
-        if ($type === DatabaseTypeType::arraylist && !($comparison === DatabaseTypeComparison::in || $comparison === DatabaseTypeComparison::notin))
+        if ($type === Type\Type::arraylist && !($comparison === Comparison::in || $comparison === Comparison::notin))
             throw new Exception('Arrays can only be compared with in and notin.');
-        if ($type !== DatabaseTypeType::arraylist && ($comparison === DatabaseTypeComparison::in || $comparison === DatabaseTypeComparison::notin)) {
+        if ($type !== Type\Type::arraylist && ($comparison === Comparison::in || $comparison === Comparison::notin)) {
             throw new Exception('in and notin can only be used with arrays.');
         }
 

@@ -1,13 +1,13 @@
 <?php
 
-namespace Database;
+namespace Database\Index;
 
 /**
  * A faux-enum containing the different index types supported by the Database layer.
  *
  * @package Database
  */
-class DatabaseIndexType
+class Type
 {
     /**
      * The default value, index.

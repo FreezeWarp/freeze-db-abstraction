@@ -1,13 +1,13 @@
 <?php
 
-namespace Database;
+namespace Database\Type;
 
 /**
  * A faux-enum containing the different comparison types supported by the Database layer.
  *
  * @package Database
  */
-class DatabaseTypeComparison {
+class Comparison {
     /**
      * The default value, equals.
      */

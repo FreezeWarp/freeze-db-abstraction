@@ -2,10 +2,10 @@
 namespace Database\SQL;
 
 use Database\DatabaseResultInterface;
-use Database\DatabaseIndexType;
+use Database\Index;
 use Database\DatabaseEngine;
-use Database\DatabaseTypeType;
-use Database\DatabaseTypeComparison;
+use Database\Type;
+use Database\Type\Comparison;
 
 /**
  * The expected conventions of a typical SQL driver.
@@ -202,16 +202,16 @@ abstract class DatabaseSQLStandard implements DatabaseSQLInterface {
      * @var array The tokens corresponding to DatabaseTypeComparison enumerations.
      */
     public $comparisonTypes = array(
-        DatabaseTypeComparison::equals => '=',
-        DatabaseTypeComparison::assignment => '=',
-        DatabaseTypeComparison::in => 'IN',
-        DatabaseTypeComparison::notin => 'NOT IN',
-        DatabaseTypeComparison::lessThan => '<',
-        DatabaseTypeComparison::lessThanEquals=> '<=',
-        DatabaseTypeComparison::greaterThan => '>',
-        DatabaseTypeComparison::greaterThanEquals => '>=',
-        DatabaseTypeComparison::search => 'LIKE',
-        DatabaseTypeComparison::binaryAnd => '&',
+        Comparison::equals            => '=',
+        Comparison::assignment        => '=',
+        Comparison::in                => 'IN',
+        Comparison::notin             => 'NOT IN',
+        Comparison::lessThan          => '<',
+        Comparison::lessThanEquals    => '<=',
+        Comparison::greaterThan       => '>',
+        Comparison::greaterThanEquals => '>=',
+        Comparison::search            => 'LIKE',
+        Comparison::binaryAnd         => '&',
     );
 
     /**
@@ -232,10 +232,10 @@ abstract class DatabaseSQLStandard implements DatabaseSQLInterface {
      * @var array The phrases that identify the three supported key types, 'primary', 'unique', and 'index'
      */
     public $keyTypeConstants = array(
-        DatabaseIndexType::fulltext => 'FULLTEXT',
-        DatabaseIndexType::primary => 'PRIMARY',
-        DatabaseIndexType::unique => 'UNIQUE',
-        DatabaseIndexType::index => '',
+        Index\Type::fulltext => 'FULLTEXT',
+        Index\Type::primary  => 'PRIMARY',
+        Index\Type::unique   => 'UNIQUE',
+        Index\Type::index    => '',
     );
 
     /**

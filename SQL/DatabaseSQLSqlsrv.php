@@ -3,7 +3,7 @@ namespace Database\SQL;
 
 use Database\DatabaseResultInterface;
 use Database\DatabaseEngine;
-use Database\DatabaseTypeType;
+use Database\Type;
 
 /**
  * The conventions of Microsoft's SQL Server DBMS.
@@ -63,11 +63,11 @@ class DatabaseSQLSqlsrv extends DatabaseSQLStandard {
             'default' => 'INTEGER',
         ),
 
-        DatabaseTypeType::float => 'REAL',
-        DatabaseTypeType::bool => 'BIT',
-        DatabaseTypeType::timestamp => 'INTEGER',
-        DatabaseTypeType::blob => 'VARBINARY(MAX)',
-        DatabaseTypeType::json => false,
+        Type\Type::float     => 'REAL',
+        Type\Type::bool      => 'BIT',
+        Type\Type::timestamp => 'INTEGER',
+        Type\Type::blob      => 'VARBINARY(MAX)',
+        Type\Type::json      => false,
     );
 
 
@@ -119,15 +119,15 @@ class DatabaseSQLSqlsrv extends DatabaseSQLStandard {
 
     public function escape($text, $context) {
         switch ($context) {
-            case DatabaseTypeType::string:
+            case Type\Type::string:
                 return str_replace("'", "''", $text);
                 break;
 
-            case DatabaseTypeType::search:
+            case Type\Type::search:
                 return ''; // TODO. We'll be adding full-text indexes, which might make this identitcal to string.
                 break;
 
-            case DatabaseTypeType::blob:
+            case Type\Type::blob:
                 $unpacked = unpack('H*hex', $text);
                 return '0x' . $unpacked['hex'];
                 break;
@@ -185,7 +185,7 @@ class DatabaseSQLSqlsrv extends DatabaseSQLStandard {
         return $database->rawQueryReturningResult('SELECT * FROM '
             . $database->formatValue(DatabaseSQL::FORMAT_VALUE_DATABASE_TABLE, 'INFORMATION_SCHEMA', 'TABLES')
             . ' WHERE TABLE_TYPE = \'BASE TABLE\' AND TABLE_CATALOG = '
-            . $database->formatValue(DatabaseTypeType::string, $database->activeDatabase)
+            . $database->formatValue(Type\Type::string, $database->activeDatabase)
         )->getColumnValues('TABLE_NAME');
     }
 
@@ -193,7 +193,7 @@ class DatabaseSQLSqlsrv extends DatabaseSQLStandard {
         return $database->rawQueryReturningResult('SELECT * FROM '
             . $database->formatValue(DatabaseSQL::FORMAT_VALUE_DATABASE_TABLE, 'INFORMATION_SCHEMA', 'COLUMNS')
             . ' WHERE TABLE_CATALOG = '
-            . $database->formatValue(DatabaseTypeType::string, $database->activeDatabase)
+            . $database->formatValue(Type\Type::string, $database->activeDatabase)
         )->getColumnValues(['TABLE_NAME', 'COLUMN_NAME']);
     }
 
@@ -201,7 +201,7 @@ class DatabaseSQLSqlsrv extends DatabaseSQLStandard {
         return $database->rawQueryReturningResult('SELECT * FROM '
             . $database->formatValue(DatabaseSQL::FORMAT_VALUE_DATABASE_TABLE, 'INFORMATION_SCHEMA', 'TABLE_CONSTRAINTS')
             . ' WHERE TABLE_CATALOG = '
-            . $database->formatValue(DatabaseTypeType::string, $database->activeDatabase)
+            . $database->formatValue(Type\Type::string, $database->activeDatabase)
             . ' AND CONSTRAINT_TYPE = \'FOREIGN KEY\''
         )->getColumnValues(['TABLE_NAME', 'CONSTRAINT_NAME']);
     }
