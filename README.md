@@ -53,36 +53,21 @@ FreezeMessenger has no SQL-like commands. Every call is implemented with structu
 
 -   Type-safety: by simple virtue of delimiting data with an array data structure (instead of composing strings of delimited data), it is much more difficult to accidentally introduce exploits. Similarly, comparisons are fairly explicit; an example WHERE clause of (`userName` = "bob" AND `age` > 50 AND `height` > `weight`) is encoded as ["userName" => "bob", "age" => $db->int(50, "gt"), "height" => $db->column("weight", "gt")]. And modifying a column to include an exploit is essentially impossible here -- say `height` changed to `` AND (DROP TABLE) AND ``. Our database access layer will insist on ensuring that this were encoded as ``` AND (DROP TABLE) AND ```, which would not be valid. (It is, in-fact, more restrictive than this in-practice, forbidding most non-alphanumeric characters entirely, as well as enforcing a maximum column length.) TODO: wait, does it still do that? Make sure it still does that. It's a good idea I may have removed in one of the rewrites.
 
-Type Functions
---------------
-
-The DAL supports types by invoking its member functions:
-
--   int() for integers
--   bool() for boolean values
--   blob() for binary values
--   ts() for timestamp values (and now() to specify the current timestamp)
--   str() for strings
--   col() for database columns/variables
--   in() for any element of an array. For instance, in([1,2,3]) will match 1, 2, or 3.
--   search() for any search that includes the passed string. For instance, search("hello") will match "hello, how are you", "3hello52asdx", and so-on.
--   type($type, $value, $comparisonOperator) for advanced values and comparison. For instance, type('int', 33, 'gt') specifies any integer greater than 33 -- that is, [33, INF].
-
-These types are used both for insertion and selection, with the obvious exceptions (in, search, etc.).
-
-Arrays are not normally supported in the SQL layer (since SQL doesn't have arrays for storage), but may be used in conjunction with automatic data transformation (see below).
-
-Condition Arrays
+Standard Indexes
 ----------------
+The DAL exposes the following functionality during index creation:
 
-Condition arrays are specially-formatted arrays that can be passed to upsert(), update(), delete(), and select(). They can be quite simple, for instance:
+1. Index Type: Users can specify whether an index should be primary, unique, standard, or a __fulltext__ index. All currently supported DBMSes support all four types.
+2. Index Storage: Users can specify whether an index should be stored as a btree or a hash, based on its type. On MySQL and PostgreSQL > 10.0, the DAL will ask the DBMS to use this storage.
 
--   ["name" => "Bob"] finds entries where the name column is "Bob."
--   ["name" => "Bob", "id" => $db->int(3, 'gt')] finds entries where the name column is "Bob" AND the id column is greater than 3.
 
-They can also be more complicated; for instance:
+Table Engine
+------------
+The DAL exposes the ability to select a memory or general table engine during table creation.
 
--   ["either" => ["name" => "Bob", "id" => $db->int(3, 'gt')]] finds entries where the name column is "Bob" OR the id column is greater than 3.
+- On MySQL, the MEMORY table engine will be used if "memory" is specified. Either InnoDB or MySIAM (depending on the version of MySQL) will be used if "general" is specified.
+- On PostgreSQL, if "memory" is specified then UNLOGGED tables will created.
+
 
 Query Joining / Queueing
 ------------------------
@@ -99,12 +84,14 @@ The DAL is capable of (experimental) query-joining through the queue system: eit
 
 3.  At present, multiple insertions are not combined in any way, as the SQL backend is currently incapable of inserting multiple rows at once. This may change in the future.
 
+
 Transactions
 ------------
 
 While advanced transactions may or may not fully work (depending on the backend), at least one level of transactions should always be supported. A transaction can be initiated by invoking startTransaction, and it can be finished by invoking endTransaction. The DAL makes no assurances as to what state data is stored in before a transaction is complete, merely that all changes made in a transaction are reversible.
 
 To reverse a transaction, invoke rollbackTransaction. This will be automatically invoked if a query error occurs, however it may not be invoked if the DAL throws an exception. This should be fixed in the future.
+
 
 Automatic Data Transformation
 -----------------------------
@@ -132,6 +119,7 @@ Decoding will happen in the following situations:
 
 Performance-wise, automatic data transformation is reasonably quick, as it uses isset to check for the existence of transformation directives. Of-course, it must perform this check for every single column returned, but in general this should not result in an appreciable performance decrease.
 
+
 Triggers
 --------
 
@@ -140,6 +128,7 @@ Most DBMS software supports triggers of some form, but they are generally quite 
 Triggers should only fire once when operations are correctly queued.
 
 Triggers affecting the row being INSERT/UPDATE/DELETEd are partially possible using data transformation.
+
 
 Query Logger (SQL Backend)
 --------------------------
