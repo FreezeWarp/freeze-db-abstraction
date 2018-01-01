@@ -85,9 +85,9 @@ class DatabaseSQL extends Database
     public $queryLogToFile = false;
 
     /**
-     * @var bool If rawQuery should return its query instead of executing it. Ideal for simulation and testing.
+     * @var int When this is greater than 0, rawQuery should return its query instead of executing it. Ideal for simulation and testing.
      */
-    public $returnQueryString = false;
+    public $returnQueryString = 0;
 
     /**
      * @var bool If enabled, triggers will be placed in {@link DatabaseSQL::triggerQueue}, and won't be run.
@@ -1522,7 +1522,7 @@ class DatabaseSQL extends Database
                 $this->deleteIndex($tableName, $indexName);
 
                 // Add the CREATE INDEX statement to the triggers.
-                $triggers[] = $this->returnQueryString()->createIndex($tableName, $indexName, $index['type'], $index['storage'] ?? '', $primaryKey);
+                $triggers[] = $this->returnQueryString()->createIndex($tableName, $indexName, $index['type'], $index['storage'] ?? '', $index['comment'] ?? '', $primaryKey);
             }
 
             // If we are in useTableAttribute index mode and this is during table creation, or the index is primary, prepare to return the index statement.
