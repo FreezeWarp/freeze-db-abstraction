@@ -628,8 +628,8 @@ class DatabaseSQL extends Database
      */
     public function rawQuery($query)
     {
-        if ($this->returnQueryString) {
-            $this->returnQueryString = false;
+        if ($this->returnQueryString > 0) {
+            $this->returnQueryString--;
 
             return $query;
         }
@@ -692,7 +692,7 @@ class DatabaseSQL extends Database
      * @return $this
      */
     public function returnQueryString() {
-        $this->returnQueryString = true;
+        $this->returnQueryString++;
 
         return $this;
     }
@@ -1532,13 +1532,15 @@ class DatabaseSQL extends Database
                 || $index['type'] === Index\Type::primary
             ) {
 
+                $alteredIndexName = $this->getIndexName($tableName, $indexName);
+
                 /* Build the Index Statement */
                 $indexStatement = "";
 
                 // Use CONSTRAINT syntax if the index is a primary key (we do this so we can reference the primary key by name as a constraint)
                 if ($index['type'] === Index\Type::primary)
                     $indexStatement .= " CONSTRAINT "
-                        . $this->formatValue(DatabaseSQL::FORMAT_VALUE_INDEX, $this->getIndexName($tableName, $indexName))
+                        . $this->formatValue(DatabaseSQL::FORMAT_VALUE_INDEX, $alteredIndexName)
                         . ' ';
 
                 // Append the index type
@@ -1546,15 +1548,28 @@ class DatabaseSQL extends Database
 
                 // Append the index name if it's not a primary key
                 if ($index['type'] !== Index\Type::primary)
-                    $indexStatement .= $this->formatValue(DatabaseSQL::FORMAT_VALUE_INDEX, $this->getIndexName($tableName, $indexName));
+                    $indexStatement .= $this->formatValue(DatabaseSQL::FORMAT_VALUE_INDEX, $alteredIndexName);
+
+                // Append the list of columns
+                $indexStatement .= $this->formatValue(Type\Type::arraylist, $this->getIndexColsFromIndexName($indexName));
 
                 // If we have storage (and are allowed to use it), use it
                 if (isset($this->sqlInterface->indexStorages[$index['storage'] ?? ''])
                     && $this->sqlInterface->indexStorageOnCreate)
                     $indexStatement .= ' USING ' . $this->sqlInterface->indexStorages[$index['storage']];
 
-                // Append the list of columns
-                $indexStatement .= $this->formatValue(Type\Type::arraylist, $this->getIndexColsFromIndexName($indexName));
+                // Index comments
+                if (isset($index['comment']) && $index['comment']) {
+                    switch ($this->sqlInterface->commentMode) {
+                        case 'useAttributes':
+                            $indexStatement .= ' COMMENT ' . $this->formatValue(Type\Type::string, $index['comment']);
+                        break;
+
+                        case 'useCommentOn':
+                            $triggers[] = $this->returnQueryString()->createIndexComment($alteredIndexName, $index['comment']);
+                        break;
+                    }
+                }
 
 
                 /* Add the Index Statement to the List */
@@ -1573,79 +1588,6 @@ class DatabaseSQL extends Database
             : $this->executeTriggers($tableName, $triggers);
     }
 
-
-    /**
-     * Create a new index on a table.
-     *
-     * @param $tableName string The table to create a new index on.
-     * @param $indexName string The name of the index to create.
-     * @param $indexType string The type of index, some value in {@see Index\Type}.
-     * @param $indexStorage string The storage method for the index, some value in {@see Index\Storage}.
-     * @param $primaryKey string The primary key that already exists in the table, if any; this is solely used when creation SQL Server full text indexes.
-     *
-     * @return bool True on success, false on failure.
-     */
-    public function createIndex($tableName, $indexName, $indexType, $indexStorage, $primaryKey = null)
-    {
-
-        // Transfrom the index name into one that is unique to the database.
-        $alteredIndexName = $this->getIndexName($tableName, $indexName);
-
-        // Get the columns referenced by an index name.
-        $indexCols = $this->getIndexColsFromIndexName($indexName);
-
-
-        /* CREATE x INDEX ON table */
-        $trigger = "CREATE " . $this->sqlInterface->keyTypeConstants[$indexType] . " INDEX";
-
-        if (!($indexType === Index\Type::fulltext
-            && $this->sqlInterface->getLanguage() === 'sqlsrv')) {
-            $trigger .= ' '
-                . $this->formatValue(DatabaseSQL::FORMAT_VALUE_INDEX, $alteredIndexName);
-        }
-
-        $trigger .= " ON "
-                . $this->formatValue(DatabaseSQL::FORMAT_VALUE_TABLE, $tableName);
-
-        if (isset($this->sqlInterface->indexStorages[$indexStorage])) {
-            $trigger .= " USING " . $this->sqlInterface->indexStorages[$indexStorage];
-        }
-
-        /* PgSQL: GIN indexes for fulltext
-         * TODO: this doesn't support multi-column fulltext indexes. */
-        if ($indexType === Index\Type::fulltext
-            && $this->sqlInterface->getLanguage() === 'pgsql') {
-            $trigger .= ' USING GIN (to_tsvector(\'english\', ' . $this->formatValue(Type\Type::column, $indexName) . '))';
-        }
-
-        /* (columns) */
-        else {
-            $trigger .= ' '
-                . $this->formatValue(Type\Type::arraylist, $indexCols);
-        }
-
-
-        /* SqlSrv: WHERE NOT NULL (allow multiple nulls in SqlSrv unique indexes) */
-        if ($indexType === Index\Type::unique
-            && $this->sqlInterface->getLanguage() === 'sqlsrv') {
-            $indexColsConditions = [];
-            foreach ($indexCols AS $col) {
-                $indexColsConditions["!{$col->value}"] = $this->type(Type\Type::null);
-            }
-
-            $trigger .= ' WHERE ' . $this->recurseBothEither($indexColsConditions, $this->reverseAliasFromConditionArray($tableName, $indexColsConditions), 'both');
-        }
-
-
-        /* SqlSrv: KEY INDEX for full text indexes */
-        if ($indexType === Index\Type::fulltext
-            && $this->sqlInterface->getLanguage() === 'sqlsrv') {
-            $trigger .= ' KEY INDEX ' . $this->formatValue(DatabaseSQL::FORMAT_VALUE_INDEX, $primaryKey);
-        }
-
-        return $this->rawQuery($trigger);
-
-    }
 
     /**
      * Deletes an existing table index. Will do nothing if the index does not exist.
@@ -1685,6 +1627,94 @@ class DatabaseSQL extends Database
 
             return false;
         }
+
+    }
+
+    /**
+     * Create a new index on a table.
+     *
+     * @param $tableName string The table to create a new index on.
+     * @param $indexName string The name of the index to create.
+     * @param $indexType string The type of index, some value in {@see Index\Type}.
+     * @param $indexStorage string The storage method for the index, some value in {@see Index\Storage}.
+     * @param $indexComment string A comment for the index.
+     * @param $primaryKey string The primary key that already exists in the table, if any; this is solely used when creation SQL Server full text indexes.
+     *
+     * @return bool True on success, false on failure.
+     */
+    public function createIndex($tableName, $indexName, $indexType = Index\Type::index, $indexStorage = '', $indexComment = '', $primaryKey = null)
+    {
+
+        // Transfrom the index name into one that is unique to the database.
+        $alteredIndexName = $this->getIndexName($tableName, $indexName);
+
+        // Get the columns referenced by an index name.
+        $indexCols = $this->getIndexColsFromIndexName($indexName);
+
+
+        /* CREATE x INDEX ON table */
+        // Begin the index statement
+        $indexStatement = "CREATE " . $this->sqlInterface->keyTypeConstants[$indexType] . " INDEX";
+
+        // Unless we're a fulltext index on SQL Server, add the index name.
+        if (!($indexType === Index\Type::fulltext
+            && $this->sqlInterface->getLanguage() === 'sqlsrv')) {
+            $indexStatement .= ' ' . $this->formatValue(DatabaseSQL::FORMAT_VALUE_INDEX, $alteredIndexName);
+        }
+
+        // Add the ON table_name
+        $indexStatement .= " ON "
+            . $this->formatValue(DatabaseSQL::FORMAT_VALUE_TABLE, $tableName);
+
+        // Add PgSQL GIN indexes for fulltext, if applicable (TODO: this doesn't support multi-column fulltext indexes.)
+        if ($indexType === Index\Type::fulltext
+            && $this->sqlInterface->getLanguage() === 'pgsql') {
+            $indexStatement .= ' USING GIN (to_tsvector(\'english\', ' . $this->formatValue(Type\Type::column, $indexName) . '))';
+        }
+
+        // Add the list of columns unless we're a PgSQL GIN index
+        else {
+            $indexStatement .= ' '
+                . $this->formatValue(Type\Type::arraylist, $indexCols);
+        }
+
+        // Add a USING storage_type clause of a specific storage engine is available
+        if (isset($this->sqlInterface->indexStorages[$indexStorage])) {
+            $indexStatement .= " USING " . $this->sqlInterface->indexStorages[$indexStorage];
+        }
+
+        // SqlSrv: WHERE NOT NULL (allow multiple nulls in SqlSrv unique indexes)
+        if ($indexType === Index\Type::unique
+            && $this->sqlInterface->getLanguage() === 'sqlsrv') {
+            $indexColsConditions = [];
+            foreach ($indexCols AS $col) {
+                $indexColsConditions["!{$col->value}"] = $this->type(Type\Type::null);
+            }
+
+            $indexStatement .= ' WHERE ' . $this->recurseBothEither($indexColsConditions, $this->reverseAliasFromConditionArray($tableName, $indexColsConditions), 'both');
+        }
+
+        // SqlSrv: KEY INDEX for full text indexes
+        if ($indexType === Index\Type::fulltext
+            && $this->sqlInterface->getLanguage() === 'sqlsrv') {
+            $indexStatement .= ' KEY INDEX ' . $this->formatValue(DatabaseSQL::FORMAT_VALUE_INDEX, $primaryKey);
+        }
+
+        // Create comments
+        if ($indexComment) {
+            switch ($this->sqlInterface->commentMode) {
+                case 'useAttributes':
+                    $indexStatement .= ' COMMENT ' . $this->formatValue(Type\Type::string, $indexComment);
+                break;
+
+                case 'useCommentOn':
+                    $indexStatement .= '; ' . $this->returnQueryString()->createIndexComment($alteredIndexName, $indexComment);
+                break;
+            }
+        }
+
+
+        return $this->rawQuery($indexStatement);
 
     }
 
@@ -1834,6 +1864,23 @@ class DatabaseSQL extends Database
     {
         return $this->rawQuery('COMMENT ON COLUMN '
             . $this->formatValue(DatabaseSQL::FORMAT_VALUE_TABLE_COLUMN, $tableName, $columnName)
+            . ' IS '
+            . $this->formatValue(Type\Type::string, $comment)
+        );
+    }
+
+
+    /**
+     * Adds a comment to an index.
+     *
+     * @param $indexName string The index to add a comment to.
+     *
+     * @return bool True on success, false on failure.
+     */
+    public function createIndexComment($indexName, $comment)
+    {
+        return $this->rawQuery('COMMENT ON INDEX '
+            . $this->formatValue(DatabaseSQL::FORMAT_VALUE_INDEX, $indexName)
             . ' IS '
             . $this->formatValue(Type\Type::string, $comment)
         );
