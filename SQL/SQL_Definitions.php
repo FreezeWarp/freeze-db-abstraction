@@ -12,7 +12,7 @@ use Database\Type\Comparison;
  *
  * @package Database\SQL
  */
-abstract class DatabaseSQLStandard implements DatabaseSQLInterface {
+abstract class SQL_Definitions implements DriverInterface {
     /**
      * @var mixed A link to the database driver connection.
      */

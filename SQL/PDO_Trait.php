@@ -16,8 +16,8 @@ use Database\Type\Comparison;
  *
  * @package Database\SQL
  */
-trait DatabasePDOTrait {
-    use DatabaseManualInsertIDTrait;
+trait PDO_Trait {
+    use ManualInsertID_Trait;
 
     /**
      * @var PDO

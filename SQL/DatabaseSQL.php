@@ -59,7 +59,7 @@ class DatabaseSQL extends Database
     public $language;
 
     /**
-     * @var DatabaseSQLStandard
+     * @var SQL_Definitions
      */
     public $sqlInterface;
 
@@ -550,7 +550,7 @@ class DatabaseSQL extends Database
 
 
         /* Load DatabaseSQLInterface Driver from File */
-        $className = '\Database\SQL\DatabaseSQL' . ucfirst($driver);
+        $className = '\Database\SQL\Drivers\\' . ucfirst($driver);
 
         if (!class_exists($className)) {
             throw new Exception('The specified DatabaseSQL driver is not installed.');

@@ -1,7 +1,8 @@
 <?php
-namespace Database\SQL;
+namespace Database\SQL\Drivers;
 
 use Database\DatabaseResultInterface;
+use Database\SQL\MySQL_Definitions;
 
 /**
  * The conventions of the MySQL MySQL driver.
@@ -9,7 +10,7 @@ use Database\DatabaseResultInterface;
  *
  * @package Database\SQL
  */
-class DatabaseSQLMysql extends DatabaseDefinitionsMySQL {
+class Mysql extends MySQL_Definitions {
     /**
      * @var resource
      */

@@ -63,7 +63,7 @@ use Database\Index;
  *
  * @package Database\SQL
  */
-abstract class DatabaseDefinitionsMySQL extends DatabaseSQLStandard {
+abstract class MySQL_Definitions extends SQL_Definitions {
     public $tableQuoteStart = '`';
     public $tableQuoteEnd = '`';
     public $tableAliasQuoteStart = '`';

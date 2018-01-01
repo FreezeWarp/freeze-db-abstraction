@@ -6,7 +6,7 @@ namespace Database\SQL;
  *
  * @package Database\SQL
  */
-interface DatabaseSQLInterface {
+interface DriverInterface {
     /**
      * Connect to a remote (or local) database server with a known host, port, username, and password.
      *

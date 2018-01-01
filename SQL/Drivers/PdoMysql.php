@@ -1,6 +1,9 @@
 <?php
-namespace Database\SQL;
+namespace Database\SQL\Drivers;
 
+use Database\SQL\MySQL_Definitions;
+use Database\SQL\PDO_Trait;
+use Database\SQL\ReconnectOnSelectDatabase_Trait;
 use PDO;
 use PDOStatement;
 use PDOException;
@@ -11,8 +14,8 @@ use Exception;
  *
  * @package Database\SQL
  */
-class DatabaseSQLPdoMysql extends DatabaseDefinitionsMySQL {
-    use DatabasePDOTrait, DatabaseReconnectOnSelectDatabaseTrait;
+class PdoMysql extends MySQL_Definitions {
+    use PDO_Trait, ReconnectOnSelectDatabase_Trait;
 
     public $tableQuoteStart = '';
     public $tableQuoteEnd = '';

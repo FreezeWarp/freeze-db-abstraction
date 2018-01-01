@@ -1,8 +1,10 @@
 <?php
-namespace Database\SQL;
+namespace Database\SQL\Drivers;
 
 use Database\DatabaseResultInterface;
 use Database\DatabaseEngine;
+use Database\SQL\DatabaseSQL;
+use Database\SQL\SQL_Definitions;
 use Database\Type;
 
 /**
@@ -11,7 +13,7 @@ use Database\Type;
  *
  * @package Database\SQL
  */
-class DatabaseSQLSqlsrv extends DatabaseSQLStandard {
+class Sqlsrv extends SQL_Definitions {
 
     /**
      * @var resource

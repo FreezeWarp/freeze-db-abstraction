@@ -1,7 +1,8 @@
 <?php
-namespace Database\SQL;
+namespace Database\SQL\Drivers;
 
-use mysqli;
+use Database\SQL\ManualInsertID_Trait;
+use Database\SQL\MySQL_Definitions;
 use mysqli_result;
 
 use Database\DatabaseResultInterface;
@@ -11,16 +12,16 @@ use Database\DatabaseResultInterface;
  *
  * @package Database\SQL
  */
-class DatabaseSQLMysqli extends DatabaseDefinitionsMySQL {
-    use DatabaseManualInsertIDTrait;
+class Mysqli extends MySQL_Definitions {
+    use ManualInsertID_Trait;
 
     /**
-     * @var mysqli
+     * @var \mysqli
      */
     public $connection = null;
 
     public function connect($host, $port, $username, $password, $database = false) {
-        $this->connection = new mysqli($host, $username, $password, $database ?: null, (int) $port);
+        $this->connection = new \mysqli($host, $username, $password, $database ?: null, (int) $port);
 
         $this->versionCheck();
 

@@ -6,7 +6,7 @@ namespace Database\SQL;
  *
  * @package Database\SQL
  */
-trait DatabaseManualInsertIDTrait {
+trait ManualInsertID_Trait {
     /**
      * @var mixed A holder for the last insert ID, since it may be unset by subsequent queries.
      */
