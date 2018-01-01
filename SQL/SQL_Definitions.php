@@ -1,9 +1,9 @@
 <?php
 namespace Database\SQL;
 
-use Database\DatabaseResultInterface;
+use Database\ResultInterface;
 use Database\Index;
-use Database\DatabaseEngine;
+use Database\Engine;
 use Database\Type;
 use Database\Type\Comparison;
 
@@ -250,12 +250,12 @@ abstract class SQL_Definitions implements DriverInterface {
      *   'memory' is an engine that stores all or most of its data in memory, and whose data may be lost on restart
      *   'general' is an engine that stores all or most of its data on disk, and which supports transactions, permanence, and so-on.
      */
-    public $storeTypes = array(DatabaseEngine::memory, DatabaseEngine::general);
+    public $storeTypes = array(Engine::memory, Engine::general);
 
     /*
      * todo: remove (replace with storeTypes)
      */
-    public $tableTypes = array(DatabaseEngine::memory, DatabaseEngine::general);
+    public $tableTypes = array(Engine::memory, Engine::general);
 
     /**
      * @var array Various datatype information. This information should only be needed when creating and altering table columns.
@@ -396,7 +396,7 @@ abstract class SQL_Definitions implements DriverInterface {
     abstract public function selectDatabase($database);
     abstract public function escape($text, $context);
     abstract public function query($rawQuery);
-    abstract public function queryReturningResult($rawQuery): DatabaseResultInterface;
+    abstract public function queryReturningResult($rawQuery): ResultInterface;
     abstract public function getLastInsertId();
     abstract public function startTransaction();
     abstract public function endTransaction();

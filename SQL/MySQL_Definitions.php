@@ -1,7 +1,7 @@
 <?php
 namespace Database\SQL;
 
-use Database\DatabaseEngine;
+use Database\Engine;
 use Database\Type;
 use Database\Index;
 
@@ -178,8 +178,8 @@ abstract class MySQL_Definitions extends SQL_Definitions {
     public $useCreateIfNotExist = true;
 
     public $tableTypes = array(
-        DatabaseEngine::general => 'InnoDB',
-        DatabaseEngine::memory  => 'MEMORY',
+        Engine::general => 'InnoDB',
+        Engine::memory  => 'MEMORY',
     );
 
     public $indexStorages = array(
@@ -229,7 +229,7 @@ abstract class MySQL_Definitions extends SQL_Definitions {
      */
     public function versionCheck() {
         if (floatval($this->getVersion()) < 5.6) {
-            $tableTypes[DatabaseEngine::general] = 'MySIAM';
+            $tableTypes[Engine::general] = 'MySIAM';
         }
     }
 }

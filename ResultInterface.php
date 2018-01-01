@@ -7,7 +7,7 @@ namespace Database;
  *
  * @package Database
  */
-interface DatabaseResultInterface {
+interface ResultInterface {
     /**
      * @return array The next row from the resultset, or false if no more results are available.
      */

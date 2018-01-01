@@ -1355,7 +1355,7 @@ abstract class Database
      * @param Database $database     {@see databaseResult::$database}
      * @param bool     $paginated    {@see databaseResult::$paginated}
      *
-     * @return DatabaseResult
+     * @return Result
      * @author Joseph Todd Parsons <josephtparsons@gmail.com>
      */
     abstract protected function databaseResultPipe($queryData, $reverseAlias, string $sourceQuery, Database $database, int $paginated = 0);

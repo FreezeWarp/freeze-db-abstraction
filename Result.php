@@ -7,7 +7,7 @@ namespace Database;
  *
  * @package Database
  */
-class DatabaseResult
+class Result
 {
     /**
      * @var array The result-set returned from the query.
@@ -52,7 +52,7 @@ class DatabaseResult
      *
      * @return void
      */
-    public function __construct(DatabaseResultInterface $queryData, $reverseAlias, $sourceQuery, Database $database, int $resultLimit = 0)
+    public function __construct(ResultInterface $queryData, $reverseAlias, $sourceQuery, Database $database, int $resultLimit = 0)
     {
         $this->queryData = $queryData;
         $this->reverseAlias = $reverseAlias;

@@ -1,8 +1,8 @@
 <?php
 namespace Database\SQL\Drivers;
 
-use Database\DatabaseResultInterface;
-use Database\DatabaseEngine;
+use Database\ResultInterface;
+use Database\Engine;
 use Database\SQL\DatabaseSQL;
 use Database\SQL\ReconnectOnSelectDatabase_Trait;
 use Database\SQL\SQL_Definitions;
@@ -36,7 +36,7 @@ class Pgsql extends SQL_Definitions {
      */
     public $connection = null;
 
-    public $storeTypes = array(DatabaseEngine::general);
+    public $storeTypes = array(Engine::general);
 
     public $dataTypes = array(
         'columnIntLimits' => array(
@@ -179,7 +179,7 @@ class Pgsql extends SQL_Definitions {
         return pg_query($this->connection, $rawQuery);
     }
 
-    public function queryReturningResult($rawQuery) : DatabaseResultInterface {
+    public function queryReturningResult($rawQuery) : ResultInterface {
         return $this->getResult($this->query($rawQuery));
     }
 
@@ -200,7 +200,7 @@ class Pgsql extends SQL_Definitions {
     }
 
     protected function getResult($source) {
-        return new class($source) implements DatabaseResultInterface {
+        return new class($source) implements ResultInterface {
             /**
              * @var resource The postgres resource returned by query.
              */

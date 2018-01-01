@@ -1,8 +1,8 @@
 <?php
 namespace Database\SQL\Drivers;
 
-use Database\DatabaseResultInterface;
-use Database\DatabaseEngine;
+use Database\ResultInterface;
+use Database\Engine;
 use Database\SQL\DatabaseSQL;
 use Database\SQL\SQL_Definitions;
 use Database\Type;
@@ -25,7 +25,7 @@ class Sqlsrv extends SQL_Definitions {
      */
     public $preparedParams = [];
 
-    public $storeTypes = array(DatabaseEngine::general);
+    public $storeTypes = array(Engine::general);
 
     public $dataTypes = array(
         'columnIntLimits' => array(
@@ -145,7 +145,7 @@ class Sqlsrv extends SQL_Definitions {
         return $query;
     }
 
-    public function queryReturningResult($rawQuery) : DatabaseResultInterface {
+    public function queryReturningResult($rawQuery) : ResultInterface {
         return $this->getResult($this->query($rawQuery));
     }
 
@@ -166,7 +166,7 @@ class Sqlsrv extends SQL_Definitions {
     }
 
     protected function getResult($source) {
-        return new class($source) implements DatabaseResultInterface {
+        return new class($source) implements ResultInterface {
             public $source;
 
             public function __construct($source) {

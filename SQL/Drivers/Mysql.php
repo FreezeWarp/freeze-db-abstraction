@@ -1,7 +1,7 @@
 <?php
 namespace Database\SQL\Drivers;
 
-use Database\DatabaseResultInterface;
+use Database\ResultInterface;
 use Database\SQL\MySQL_Definitions;
 
 /**
@@ -61,7 +61,7 @@ class Mysql extends MySQL_Definitions {
         return $query;
     }
 
-    public function queryReturningResult($rawQuery) : DatabaseResultInterface {
+    public function queryReturningResult($rawQuery) : ResultInterface {
         return $this->getResult($this->query($rawQuery));
     }
 
@@ -81,8 +81,8 @@ class Mysql extends MySQL_Definitions {
         $this->query('ROLLBACK');
     }
 
-    protected function getResult($source) : DatabaseResultInterface {
-        return new class($source) implements DatabaseResultInterface {
+    protected function getResult($source) : ResultInterface {
+        return new class($source) implements ResultInterface {
             /**
              * @var resource The result of the query.
              */

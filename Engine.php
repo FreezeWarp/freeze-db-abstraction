@@ -8,7 +8,7 @@ namespace Database;
  *
  * @package Database
  */
-class DatabaseEngine {
+class Engine {
     /**
      * The default value, general.
      */

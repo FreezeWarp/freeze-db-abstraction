@@ -4,10 +4,10 @@ namespace Database\SQL;
 use Exception;
 
 use Database\Database;
-use Database\DatabaseResult;
-use Database\DatabaseResultInterface;
+use Database\Result;
+use Database\ResultInterface;
 
-use Database\DatabaseEngine;
+use Database\Engine;
 use Database\Index;
 use Database\Type;
 use Database\Type\Comparison;
@@ -658,7 +658,8 @@ class DatabaseSQL extends Database
      * The query may be logged if it takes a certain amount of time to execute successfully.
      *
      * @param string $query - The raw query to execute.
-     * @return DatabaseResult The database result returned by the query, or false on failure.
+     *
+     * @return Result The database result returned by the query, or false on failure.
      */
     public function rawQueryReturningResult($query, $reverseAlias = false, int $paginate = 0) {
 
@@ -702,7 +703,7 @@ class DatabaseSQL extends Database
      */
     protected function databaseResultPipe($queryData, $reverseAlias, string $sourceQuery, Database $database, int $paginated = 0)
     {
-        return new DatabaseResult($queryData, $reverseAlias, $sourceQuery, $database, $paginated);
+        return new Result($queryData, $reverseAlias, $sourceQuery, $database, $paginated);
     }
 
 
@@ -876,12 +877,12 @@ class DatabaseSQL extends Database
      *     'comment'       string           Information about the column for documentation purposes.
      *     'type'          DatabaseTypeType The column's type.
      * }
-     * @param $engine DatabaseEngine The engine the table is using.
+     * @param $engine Engine The engine the table is using.
      *
      * @return array An array of four things: (1.) an array of SQL column statements, (2.) an array of triggers to run after creating columns (which will typically maintain default values), (3.) the array of indexes, which may have been modified, and (4.) additional SQL parameters to append to the CREATE TABLE statement, for instance "AUTO_INCREMENT=".
      * @throws Exception If enums are not supported and need to be used.
      */
-    private function parseTableColumns($tableName, $tableColumns, $tableIndexes = [], $engine = DatabaseEngine::general) {
+    private function parseTableColumns($tableName, $tableColumns, $tableIndexes = [], $engine = Engine::general) {
         /**
          * Additional table parameters to be appended at the end of the CREATE TABLE statement. For instance, "AUTO_INCREMENT=".
          */
@@ -1015,7 +1016,7 @@ class DatabaseSQL extends Database
                     }
                     else {
                         // Limits may differ depending on table type and column type. Get the correct array encoding limits.
-                        $stringLimits = $this->sqlInterface->dataTypes['column' . ($column['type'] === Type\Type::blob ? 'Blob' : 'String') . ($engine === DatabaseEngine::memory ? 'Temp' : 'Perm') . 'Limits'];
+                        $stringLimits = $this->sqlInterface->dataTypes['column' . ($column['type'] === Type\Type::blob ? 'Blob' : 'String') . ($engine === Engine::memory ? 'Temp' : 'Perm') . 'Limits'];
 
                         // Search through the array encoding limits. This array should be keyed in increasing size.
                         foreach ($stringLimits AS $length => $type) {
@@ -1328,7 +1329,7 @@ class DatabaseSQL extends Database
 
             $return = $this->rawQuery(
                 'CREATE '
-                . ($this->sqlInterface->getLanguage() === 'pgsql' && $engine === DatabaseEngine::memory
+                . ($this->sqlInterface->getLanguage() === 'pgsql' && $engine === Engine::memory
                     ? 'UNLOGGED '
                     : '')
                 . 'TABLE '
@@ -1432,7 +1433,7 @@ class DatabaseSQL extends Database
      *
      * @return bool True on success, false on failure.
      */
-    public function createTableColumns($tableName, $tableColumns, $engine = DatabaseEngine::general) {
+    public function createTableColumns($tableName, $tableColumns, $engine = Engine::general) {
         list ($columns, $triggers, $tableIndexes) = $this->parseTableColumns($tableName, $tableColumns, null, $engine);
 
         array_walk($columns, function(&$column) { $column = 'ADD ' . $column; });
@@ -1455,7 +1456,7 @@ class DatabaseSQL extends Database
      *
      * @return bool True on success, false on failure.
      */
-    public function alterTableColumns($tableName, $tableColumns, $engine = DatabaseEngine::general) {
+    public function alterTableColumns($tableName, $tableColumns, $engine = Engine::general) {
         list ($columns, $triggers, $tableIndexes) = $this->parseTableColumns($tableName, $tableColumns, null, $engine);
 
         array_walk($columns, function(&$column) { $column = 'MODIFY ' . $column; });

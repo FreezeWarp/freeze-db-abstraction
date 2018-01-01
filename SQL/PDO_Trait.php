@@ -5,9 +5,9 @@ use PDO;
 use PDOStatement;
 use Exception;
 
-use Database\DatabaseResultInterface;
+use Database\ResultInterface;
 use Database\Index;
-use Database\DatabaseEngine;
+use Database\Engine;
 use Database\Type;
 use Database\Type\Comparison;
 
@@ -90,7 +90,7 @@ trait PDO_Trait {
         }
     }
 
-    public function queryReturningResult($rawQuery) : DatabaseResultInterface {
+    public function queryReturningResult($rawQuery) : ResultInterface {
         return $this->getResult($this->query($rawQuery));
     }
 
@@ -106,8 +106,8 @@ trait PDO_Trait {
         $this->connection->rollBack();
     }
 
-    protected function getResult($source) : DatabaseResultInterface {
-        return new class($source) implements DatabaseResultInterface {
+    protected function getResult($source) : ResultInterface {
+        return new class($source) implements ResultInterface {
             /**
              * @var PDOStatement The result of the query.
              */

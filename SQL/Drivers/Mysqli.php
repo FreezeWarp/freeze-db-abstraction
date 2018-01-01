@@ -5,7 +5,7 @@ use Database\SQL\ManualInsertID_Trait;
 use Database\SQL\MySQL_Definitions;
 use mysqli_result;
 
-use Database\DatabaseResultInterface;
+use Database\ResultInterface;
 
 /**
  * The conventions of the MySQLi MySQL driver.
@@ -111,7 +111,7 @@ class Mysqli extends MySQL_Definitions {
         return $query;
     }
 
-    public function queryReturningResult($rawQuery) : DatabaseResultInterface {
+    public function queryReturningResult($rawQuery) : ResultInterface {
         return $this->getResult($this->query($rawQuery));
     }
 
@@ -129,8 +129,8 @@ class Mysqli extends MySQL_Definitions {
         $this->connection->autocommit(true);
     }
 
-    protected function getResult($source) : DatabaseResultInterface {
-        return new class($source) implements DatabaseResultInterface {
+    protected function getResult($source) : ResultInterface {
+        return new class($source) implements ResultInterface {
             /**
              * @var mysqli_result The result of the query.
              */
