@@ -1,5 +1,7 @@
 Frozen Database Abstraction Layer
 ==========================
+This is an advanced database abstraction layer developed alongside (FreezeMessenger)[github.com/FreezeWarp/freeze-messenger/]. It is powerful and flexible, with a number of features detailed below, though should still be considered "beta" and it's overall method format will likely be significantly overhauled in the future.
+
 
 Some Database Principles
 ------------------------
@@ -13,6 +15,7 @@ The database abstraction layer follows a handful of basic database principles wh
 -   Likewise, as data is most commonly stored on disk, avoid reading as much data as possible from the database. Plus, if you only query columns that are part of an index, you may be able to use the indexes alone for the query.
 
 -   Memory tables, where supported, can be very, very fast. But be mindful of how memory tables work -- typically, every column will be fixed-length, so a VARCHAR(1000) will always take up 1000 bytes in every row, instead of being flexible.
+
 
 Supported Drivers
 -----------------
@@ -33,6 +36,7 @@ Supported Drivers
     1.  __sqlsrv__ is experimentally available, and may work with most functionality at this time. Note, however, that only experienced DBAs should use FreezeMessenger with SqlServer (as many tables may need to be further optimised on a per-installation basis to maintain performance, and a fulltext storage object must first be created prior to using FreezeMessenger), and that, at this time, SqlServer is not guaranteed to be injection proof, due to the SqlServer driver not supporting parameterised queries on CREATE statements, and also not having any escape() function.
     2.  __pdoSqlsrv__ is planned.
 
+
 Language-Specific Notes
 -----------------------
 
@@ -41,6 +45,7 @@ Language-Specific Notes
 -   Only MySQL supports automatically setting the table charset to UTF-8. Postgre's charsets are per-database, and thus must be set by the user.
 -   For memory tables, MySQL's MEMORY engine is used, while Postgre's UNLOGGED table attribute is used. While SqlServer supports memory-optimized tables, they are unimplemented.
 -   MySQL will use MySIAM on versions < 5.6, as InnoDB did not have FULLTEXT capabilities in these versions. It will use InnoDB on versions >= 5.6.
+
 
 Why?
 ----
@@ -53,16 +58,26 @@ FreezeMessenger has no SQL-like commands. Every call is implemented with structu
 
 -   Type-safety: by simple virtue of delimiting data with an array data structure (instead of composing strings of delimited data), it is much more difficult to accidentally introduce exploits. Similarly, comparisons are fairly explicit; an example WHERE clause of (`userName` = "bob" AND `age` > 50 AND `height` > `weight`) is encoded as ["userName" => "bob", "age" => $db->int(50, "gt"), "height" => $db->column("weight", "gt")]. And modifying a column to include an exploit is essentially impossible here -- say `height` changed to `` AND (DROP TABLE) AND ``. Our database access layer will insist on ensuring that this were encoded as ``` AND (DROP TABLE) AND ```, which would not be valid. (It is, in-fact, more restrictive than this in-practice, forbidding most non-alphanumeric characters entirely, as well as enforcing a maximum column length.) TODO: wait, does it still do that? Make sure it still does that. It's a good idea I may have removed in one of the rewrites.
 
-Standard Indexes
-----------------
+
+Thorough Database Definition Language
+-------------------------------------
+
+### Standard Indexes
 The DAL exposes the following functionality during index creation:
 
 1. Index Type: Users can specify whether an index should be primary, unique, standard, or a __fulltext__ index. All currently supported DBMSes support all four types.
 2. Index Storage: Users can specify whether an index should be stored as a btree or a hash, based on its type. On MySQL and PostgreSQL > 10.0, the DAL will ask the DBMS to use this storage.
 
 
-Table Engine
-------------
+### Updating Indexes
+Indexes are named in a consistent format across database engines, which ensures that indexes can be updated after the initial table definition.
+
+
+### Documenting Your Tables
+Tables, columns, and indexes all support comments during table creation.
+
+
+### Table Engine
 The DAL exposes the ability to select a memory or general table engine during table creation.
 
 - On MySQL, the MEMORY table engine will be used if "memory" is specified. Either InnoDB or MySIAM (depending on the version of MySQL) will be used if "general" is specified.
