@@ -263,6 +263,11 @@ abstract class DatabaseSQLStandard implements DatabaseSQLInterface {
     public $dataTypes = array();
 
     /**
+     * @var array The tokens to use for different index types. If empty, index types will not be specified on creation.
+     */
+    public $indexStorages = array();
+
+    /**
      * @var array The values that should be used for boolean "true" and "false".
      */
     public $boolValues = array(
@@ -302,6 +307,11 @@ abstract class DatabaseSQLStandard implements DatabaseSQLInterface {
      * @var bool Whether or not PARTITION is supported in table definitions.
      */
     public $usePartition = false;
+
+    /**
+     * @var bool Whether or not to use index storage specification when indexes are created with CREATE TABLE.
+     */
+    public $indexStorageOnCreate = false;
 
     /**
      * @var string {

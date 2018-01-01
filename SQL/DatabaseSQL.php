@@ -7,8 +7,8 @@ use Database\Database;
 use Database\DatabaseResult;
 use Database\DatabaseResultInterface;
 
-use Database\Index;
 use Database\DatabaseEngine;
+use Database\Index;
 use Database\Type;
 use Database\Type\Comparison;
 
@@ -1180,7 +1180,7 @@ class DatabaseSQL extends Database
                     }
                 }
                 else {
-                    throw new Exception('$column[\'restrict\'] must be an instance of DatabaseType(DatabaseTypeType\Type::tableColumn).');
+                    throw new Exception('$column[\'restrict\'] must be an instance of DatabaseType(Database\Type\Type::tableColumn).');
                 }
             }
 
@@ -1479,6 +1479,7 @@ class DatabaseSQL extends Database
      *     An array of table column properties indexed by a comma-seperated list of columns the table index indexes. Valid parameters:
      *
      *     'type'          string           The type of the index, some value from DatabaseIndexType.
+     *     'storage'       string           How the index should be stored, some value from DatabaseIndexStorage.
      * }
      * @param bool   $duringTableCreation When true, this will return index statements to be used with table created.
      *
@@ -1520,21 +1521,44 @@ class DatabaseSQL extends Database
                 $this->deleteIndex($tableName, $indexName);
 
                 // Add the CREATE INDEX statement to the triggers.
-                $triggers[] = $this->returnQueryString()->createIndex($tableName, $indexName, $index['type'], $primaryKey);
+                $triggers[] = $this->returnQueryString()->createIndex($tableName, $indexName, $index['type'], $index['storage'] ?? '', $primaryKey);
             }
 
             // If we are in useTableAttribute index mode and this is during table creation, or the index is primary, prepare to return the index statement.
-            elseif (($duringTableCreation && $this->sqlInterface->indexMode === 'useTableAttribute') || $index['type'] === 'primary') {
-                $indexes[] = ($index['type'] === 'primary'
-                    ?
-                        " CONSTRAINT "
+            elseif (
+                ($duringTableCreation
+                    && $this->sqlInterface->indexMode === 'useTableAttribute')
+                || $index['type'] === Index\Type::primary
+            ) {
+
+                /* Build the Index Statement */
+                $indexStatement = "";
+
+                // Use CONSTRAINT syntax if the index is a primary key (we do this so we can reference the primary key by name as a constraint)
+                if ($index['type'] === Index\Type::primary)
+                    $indexStatement .= " CONSTRAINT "
                         . $this->formatValue(DatabaseSQL::FORMAT_VALUE_INDEX, $this->getIndexName($tableName, $indexName))
-                        . ' '
-                    :
-                        ''
-                    )
-                    . $this->sqlInterface->keyTypeConstants[$index['type']] . " KEY "
-                        . $this->formatValue(Type\Type::arraylist, $this->getIndexColsFromIndexName($indexName));
+                        . ' ';
+
+                // Append the index type
+                $indexStatement .= $this->sqlInterface->keyTypeConstants[$index['type']] . " KEY ";
+
+                // Append the index name if it's not a primary key
+                if ($index['type'] !== Index\Type::primary)
+                    $indexStatement .= $this->formatValue(DatabaseSQL::FORMAT_VALUE_INDEX, $this->getIndexName($tableName, $indexName));
+
+                // If we have storage (and are allowed to use it), use it
+                if (isset($this->sqlInterface->indexStorages[$index['storage'] ?? ''])
+                    && $this->sqlInterface->indexStorageOnCreate)
+                    $indexStatement .= ' USING ' . $this->sqlInterface->indexStorages[$index['storage']];
+
+                // Append the list of columns
+                $indexStatement .= $this->formatValue(Type\Type::arraylist, $this->getIndexColsFromIndexName($indexName));
+
+
+                /* Add the Index Statement to the List */
+                $indexes[] = $indexStatement;
+
             }
 
             // Throw an exception if the index mode is unrecognised.
@@ -1550,14 +1574,17 @@ class DatabaseSQL extends Database
 
 
     /**
-     * Deletes an existing table index. Will do nothing if the index does not exist.
+     * Create a new index on a table.
      *
-     * @param $tableName string The table with a foreign key constraint.
-     * @param $constraintName string The foreign key constraint's name.
+     * @param $tableName string The table to create a new index on.
+     * @param $indexName string The name of the index to create.
+     * @param $indexType string The type of index, some value in {@see Index\Type}.
+     * @param $indexStorage string The storage method for the index, some value in {@see Index\Storage}.
+     * @param $primaryKey string The primary key that already exists in the table, if any; this is solely used when creation SQL Server full text indexes.
      *
      * @return bool True on success, false on failure.
      */
-    public function createIndex($tableName, $indexName, $indexType, $primaryKey = false)
+    public function createIndex($tableName, $indexName, $indexType, $indexStorage, $primaryKey = null)
     {
 
         // Transfrom the index name into one that is unique to the database.
@@ -1578,6 +1605,10 @@ class DatabaseSQL extends Database
 
         $trigger .= " ON "
                 . $this->formatValue(DatabaseSQL::FORMAT_VALUE_TABLE, $tableName);
+
+        if (isset($this->sqlInterface->indexStorages[$indexStorage])) {
+            $trigger .= " USING " . $this->sqlInterface->indexStorages[$indexStorage];
+        }
 
         /* PgSQL: GIN indexes for fulltext
          * TODO: this doesn't support multi-column fulltext indexes. */

@@ -3,6 +3,7 @@ namespace Database\SQL;
 
 use Database\DatabaseEngine;
 use Database\Type;
+use Database\Index;
 
 /**
  * The conventions of all MySQL-language drivers.
@@ -169,11 +170,21 @@ abstract class DatabaseDefinitionsMySQL extends DatabaseSQLStandard {
      */
     public $usePartition = true;
 
+    /**
+     * @var bool We enable specifying the storage of indexes written during table creation.
+     */
+    public $indexStorageOnCreate = true;
+
     public $useCreateIfNotExist = true;
 
     public $tableTypes = array(
         DatabaseEngine::general => 'InnoDB',
         DatabaseEngine::memory  => 'MEMORY',
+    );
+
+    public $indexStorages = array(
+        Index\Storage::btree => 'BTREE',
+        Index\Storage::hash => 'HASH',
     );
 
     public function getTablesAsArray(DatabaseSQL $database) {

@@ -21,6 +21,7 @@ use Database\Index;
  * * 9.3: Large objects can be up to 4TB (instead of 2GB), better JSON functions, event triggers
  * * 9.4: JSONB
  * * 9.5: Unlogged tables, JSONB functions, ON CONFLICT (i.e. upsert)
+ * * 10.0: Hash indexes actually kinda work.
  *
  * @package Database\SQL
  */
@@ -111,6 +112,14 @@ class DatabaseSQLPgsql extends DatabaseSQLStandard {
      */
     public $upsertMode = 'onConflictDoUpdate';
 
+    /**
+     * @var bool Enable btree and hash index selection on PgSQL. This will be disabled if detected version is <10.0, since hash indexes don't work well in old versions.
+     */
+    public $indexStorages = array(
+        Index\Storage::btree => 'btree',
+        Index\Storage::hash => 'hash',
+    );
+
 
     public function connect($host, $port, $username, $password, $database = false) {
         // keep the user and password in memory to allow for reconnects with selectdb
@@ -126,9 +135,12 @@ class DatabaseSQLPgsql extends DatabaseSQLStandard {
         else {
             $this->query('SET bytea_output = "escape"'); // PHP-supported binary escape format.
 
-            if (floatval($this->getVersion()) < 9.5) {
+            if (floatval($this->getVersion()) < 9.5)
                 $this->upsertMode = 'selectThenInsertOrUpdate';
-            }
+
+            if (floatval($this->getVersion()) < 10)
+                $this->indexStorages = [];
+
             return $this->connection;
         }
     }
