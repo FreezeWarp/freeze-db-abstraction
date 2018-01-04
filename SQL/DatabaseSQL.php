@@ -1108,7 +1108,9 @@ class DatabaseSQL extends Database
 
                         case 'mysql': // This one is kinda just for testing. We should replace it with DEFAULT UNIX_TIMESTAMP.
                             $triggers[] = "DROP TRIGGER IF EXISTS {$triggerName}";
-                            $triggers[] = "CREATE TRIGGER {$triggerName} BEFORE INSERT ON {TABLENAME} FOR EACH ROW SET NEW.{$columnName} = IF(NEW.{$columnName}, NEW.{$columnName}, UNIX_TIMESTAMP(NOW()))";
+                            $triggers[] = "CREATE TRIGGER {$triggerName} BEFORE INSERT ON "
+                                . $this->formatValue(self::FORMAT_VALUE_TABLE, '{TABLENAME}')
+                                . " FOR EACH ROW SET NEW.{$columnName} = IF(NEW.{$columnName}, NEW.{$columnName}, UNIX_TIMESTAMP(NOW()))";
                             break;
 
                         case 'pgsql':
@@ -1333,9 +1335,6 @@ class DatabaseSQL extends Database
                     ? 'UNLOGGED '
                     : '')
                 . 'TABLE '
-                . ($this->sqlInterface->useCreateIfNotExist
-                    ? 'IF NOT EXISTS '
-                    : '')
                 . $this->formatValue(DatabaseSQL::FORMAT_VALUE_TABLE, $tableNameI)
                 . ' ('
                 . implode(", ", $columns)
