@@ -2,12 +2,9 @@
 namespace Database\SQL\Drivers;
 
 use Database\ResultInterface;
-use Database\Engine;
-use Database\SQL\DatabaseSQL;
+use Database\SQL\Pgsql_Definitions;
 use Database\SQL\ReconnectOnSelectDatabase_Trait;
-use Database\SQL\SQL_Definitions;
 use Database\Type;
-use Database\Index;
 
 /**
  * The conventions of the PostgreSQL DBMS.
@@ -28,100 +25,13 @@ use Database\Index;
  *
  * @package Database\SQL
  */
-class Pgsql extends SQL_Definitions {
+class Pgsql extends Pgsql_Definitions {
     use ReconnectOnSelectDatabase_Trait;
 
     /**
      * @var resource
      */
     public $connection = null;
-
-    public $storeTypes = array(Engine::general);
-
-    public $dataTypes = array(
-        'columnIntLimits' => array(
-            4 => 'SMALLINT',
-            9 => 'INTEGER',
-            'default' => 'BIGINT',
-        ),
-        'columnSerialLimits' => array(
-            9 => 'SERIAL',
-            'default' => 'BIGSERIAL',
-        ),
-        'columnStringTempLimits' => array(
-            'default' => 'VARCHAR',
-        ),
-        'columnStringPermLimits' => array(
-            'default' => 'VARCHAR',
-        ),
-        'columnNoLength' => array(
-            'TEXT', 'BYTEA'
-        ),
-        'columnBlobTempLimits' => array(
-            'default' => 'BYTEA',
-        ),
-        'columnBlobPermLimits' => array(
-            'default' => 'BYTEA',
-        ),
-
-        'columnBitLimits' => array(
-            15 => 'SMALLINT',
-            31 => 'INTEGER',
-            63 => 'BIGINT',
-            'default' => 'INTEGER',
-        ),
-        Type\Type::float       => 'REAL',
-        Type\Type::bool        => 'SMALLINT', // TODO: ENUM(1,2) AS BOOLENUM better.
-        Type\Type::timestamp   => 'INTEGER',
-        Type\Type::blob        => 'BYTEA',
-        Type\Type::json        => 'JSONB',
-    );
-
-    public $concatTypes = array(
-        'both' => ' AND ', 'either' => ' OR ', 'not' => ' NOT '
-    );
-
-    public $keyTypeConstants = array(
-        Index\Type::fulltext => '',
-        Index\Type::primary  => 'PRIMARY',
-        Index\Type::unique   => 'UNIQUE',
-        Index\Type::index    => '',
-    );
-
-    public $enumMode = 'useCreateType';
-    public $commentMode = 'useCommentOn';
-    public $indexMode = 'useCreateIndex';
-    public $foreignKeyMode = 'useAlterTableConstraint';
-    public $tableRenameMode = 'alterTable';
-    public $perTableIndexes = false;
-
-    /**
-     * @var bool While Postgres supports a native bitfield type, it has very strange cast rules for it. Thus, it does not exhibit the expected behaviour, and we disable native bitfields.
-     */
-    public $nativeBitfield = false;
-
-    /**
-     * @var bool Enable PgSQL's CREATE TABLE IF NOT EXISTS support.
-     */
-    public $useCreateIfNotExist = true;
-
-    /**
-     * @var bool Enable DROP INDEX IF NOT EXISTS support on PgSQL.
-     */
-    public $useDropIndexIfExists = true;
-
-    /**
-     * @var bool Enable PgSQL's ON CONFLICT DO UPDATE upsert syntax. It will switch to 'selectThenInsertOrUpdate' once connected to the PgSQL server if the detected version is <9.5
-     */
-    public $upsertMode = 'onConflictDoUpdate';
-
-    /**
-     * @var bool Enable btree and hash index selection on PgSQL. This will be disabled if detected version is <10.0, since hash indexes don't work well in old versions.
-     */
-    public $indexStorages = array(
-        Index\Storage::btree => 'btree',
-        Index\Storage::hash => 'hash',
-    );
 
 
     public function connect($host, $port, $username, $password, $database = false) {
@@ -169,14 +79,16 @@ class Pgsql extends SQL_Definitions {
     }
 
     public function escape($text, $context) {
-        if ($context === Type::blob)
+        if ($context === Type\Type::blob)
             return pg_escape_bytea($this->connection, $text);
         else
             return pg_escape_string($this->connection, $text);
     }
 
-    public function query($rawQuery) {
-        return pg_query($this->connection, $rawQuery);
+    public function query($rawQuery, $delayExecution = false) {
+        return $delayExecution
+            ? $rawQuery
+            : pg_query($this->connection, $rawQuery);
     }
 
     public function queryReturningResult($rawQuery) : ResultInterface {
@@ -258,40 +170,5 @@ class Pgsql extends SQL_Definitions {
 
     public function notify() {
         return pg_get_notify($this->connection);
-    }
-
-    public function getTablesAsArray(DatabaseSQL $database) {
-        return $database->rawQueryReturningResult('SELECT * FROM information_schema.tables WHERE table_catalog = '
-            . $database->formatValue(Type::string, $database->activeDatabase)
-            . ' AND table_type = \'BASE TABLE\' AND table_schema NOT IN (\'pg_catalog\', \'information_schema\')'
-        )->getColumnValues('table_name');
-    }
-
-    public function getTableColumnsAsArray(DatabaseSQL $database) {
-        return $database->rawQueryReturningResult('SELECT * FROM information_schema.columns WHERE table_catalog = '
-            . $database->formatValue(Type::string, $database->activeDatabase)
-            . ' AND table_schema NOT IN (\'pg_catalog\', \'information_schema\')'
-        )->getColumnValues(['table_name', 'column_name']);
-    }
-
-    public function getTableConstraintsAsArray(DatabaseSQL $database) {
-        return $database->rawQueryReturningResult('SELECT * FROM information_schema.table_constraints WHERE table_catalog = '
-            . $database->formatValue(Type::string, $database->activeDatabase)
-            . ' AND table_schema NOT IN (\'pg_catalog\', \'information_schema\')'
-            . ' AND (constraint_type = \'FOREIGN KEY\' OR constraint_type = \'PRIMARY KEY\')'
-        )->getColumnValues(['table_name', 'constraint_name']);
-    }
-
-    /**
-     * It is not possible to get the indexes of tables in PgSQL.
-     *
-     * @return array an empty array
-     */
-    public function getTableIndexesAsArray(DatabaseSQL $database) {
-        return [];
-    }
-
-    public function getLanguage() {
-        return 'pgsql';
     }
 }

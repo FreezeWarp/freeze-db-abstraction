@@ -54,11 +54,16 @@ class Mysql extends MySQL_Definitions {
         return mysql_real_escape_string($text, $this->connection);
     }
 
-    public function query($rawQuery) {
-        $query = mysql_query($rawQuery, $this->connection);
-        $this->lastInsertId = mysql_insert_id($this->connection) ?: $this->lastInsertId;
+    public function query($rawQuery, $delayExecution = false) {
+        if ($delayExecution) {
+            return $rawQuery;
+        }
+        else {
+            $query = mysql_query($rawQuery, $this->connection);
+            $this->lastInsertId = mysql_insert_id($this->connection) ?: $this->lastInsertId;
 
-        return $query;
+            return $query;
+        }
     }
 
     public function queryReturningResult($rawQuery) : ResultInterface {

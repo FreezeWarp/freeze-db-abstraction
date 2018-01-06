@@ -5,8 +5,6 @@ use Database\Type\Comparison;
 use Exception;
 
 class Type {
-    const null = null;
-
     public $type;
     public $value;
     public $comparison;

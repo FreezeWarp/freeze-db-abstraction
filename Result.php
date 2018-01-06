@@ -184,7 +184,7 @@ class Result
      *
      * @return array
      */
-    public function getColumnValues($columns)
+    public function getColumnValues($columns) : array
     {
         $columnValues = [];
         $columns = (array)$columns;

@@ -399,6 +399,10 @@ abstract class Database
         $this->insertIdColumns = $insertIdColumns;
     }
 
+    public function setInsertIdColumn($tableName, $columnName) {
+        $this->insertIdColumns[$tableName] = $columnName;
+    }
+
 
     public function setHardPartitions($partitions) {
         $this->hardPartitions = $partitions;

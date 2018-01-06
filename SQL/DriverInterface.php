@@ -59,11 +59,12 @@ interface DriverInterface {
     /**
      * Send a raw query string to the database connection for execution.
      *
-     * @param string $rawQuery
+     * @param string $rawQuery The query string to execute.
+     * @param bool   $delayExecution If true, some form of object should be returned that can be repassed to query() for later execution.
      *
      * @return mixed False on failure; varying query data on success.
      */
-    public function query($rawQuery);
+    public function query($rawQuery, $delayExecution = false);
 
     /**
      * Send a raw query string to the database connection for execution, returning a resultset.

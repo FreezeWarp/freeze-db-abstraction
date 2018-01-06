@@ -1,4 +1,5 @@
 <?php
+
 namespace Database\SQL\Drivers;
 
 use Database\SQL\ManualInsertID_Trait;
@@ -12,7 +13,8 @@ use Database\ResultInterface;
  *
  * @package Database\SQL
  */
-class Mysqli extends MySQL_Definitions {
+class Mysqli extends MySQL_Definitions
+{
     use ManualInsertID_Trait;
 
     /**
@@ -20,26 +22,31 @@ class Mysqli extends MySQL_Definitions {
      */
     public $connection = null;
 
-    public function connect($host, $port, $username, $password, $database = false) {
-        $this->connection = new \mysqli($host, $username, $password, $database ?: null, (int) $port);
+    public function connect($host, $port, $username, $password, $database = false)
+    {
+        $this->connection = new \mysqli($host, $username, $password, $database ?: null, (int)$port);
 
         $this->versionCheck();
 
         return $this->connection->connect_error ? false : $this->connection;
     }
 
-    public function getVersion() {
+    public function getVersion()
+    {
         return $this->connection->server_info;
     }
 
-    public function getLastError() {
+    public function getLastError()
+    {
         return $this->connection->connect_errno ?: $this->connection->error;
     }
 
-    public function close() {
+    public function close()
+    {
         if (isset($this->connection)) {
             $function = $this->connection->close();
             unset($this->connection);
+
             return $function;
         }
         else {
@@ -47,11 +54,13 @@ class Mysqli extends MySQL_Definitions {
         }
     }
 
-    public function selectDatabase($database) {
+    public function selectDatabase($database)
+    {
         return $this->connection->select_db($database);
     }
 
-    public function escape($text, $context) {
+    public function escape($text, $context)
+    {
         /*$this->preparedParams[] = $text;
 
         switch ($context) {
@@ -84,7 +93,8 @@ class Mysqli extends MySQL_Definitions {
         return $this->connection->real_escape_string($text);
     }
 
-    public function query($rawQuery) {
+    public function query($rawQuery, $delayExecution = false)
+    {
         /*if (true || count($this->preparedParams) > 0) {
             $query = $this->connection->prepare($rawQuery);
 
@@ -105,46 +115,60 @@ class Mysqli extends MySQL_Definitions {
         }
         $query->close();*/
 
-        $query = $this->connection->query($rawQuery);
-        $this->incrementLastInsertId($this->connection->insert_id);
+        if ($delayExecution) {
+            return $rawQuery;
+        }
+        else {
+            $query = $this->connection->query($rawQuery);
+            $this->incrementLastInsertId($this->connection->insert_id);
 
-        return $query;
+            return $query;
+        }
     }
 
-    public function queryReturningResult($rawQuery) : ResultInterface {
+    public function queryReturningResult($rawQuery): ResultInterface
+    {
         return $this->getResult($this->query($rawQuery));
     }
 
-    public function startTransaction() {
+    public function startTransaction()
+    {
         $this->connection->autocommit(false); // Use start_transaction in PHP 5.5 TODO
     }
 
-    public function endTransaction() {
+    public function endTransaction()
+    {
         $this->connection->commit();
         $this->connection->autocommit(true);
     }
 
-    public function rollbackTransaction() {
+    public function rollbackTransaction()
+    {
         $this->connection->rollback();
         $this->connection->autocommit(true);
     }
 
-    protected function getResult($source) : ResultInterface {
-        return new class($source) implements ResultInterface {
+    protected function getResult($source): ResultInterface
+    {
+        return new class($source) implements ResultInterface
+        {
             /**
              * @var mysqli_result The result of the query.
              */
             public $source;
 
-            public function __construct($source) {
+            public function __construct($source)
+            {
                 $this->source = $source;
             }
 
-            public function fetchAsArray() {
+            public function fetchAsArray()
+            {
                 return (($data = $this->source->fetch_assoc()) === null ? false : $data);
             }
 
-            public function getCount() {
+            public function getCount()
+            {
                 return $this->source ? $this->source->num_rows : 0;
             }
         };

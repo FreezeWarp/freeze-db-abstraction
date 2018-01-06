@@ -1,4 +1,5 @@
 <?php
+
 namespace Database\SQL;
 
 use Database\ResultInterface;
@@ -12,11 +13,8 @@ use Database\Type\Comparison;
  *
  * @package Database\SQL
  */
-abstract class SQL_Definitions implements DriverInterface {
-    /**
-     * @var mixed A link to the database driver connection.
-     */
-    public $connection;
+abstract class SQL_Definitions implements DriverInterface
+{
 
     /*********************************************************
      ************************ START **************************
@@ -201,7 +199,7 @@ abstract class SQL_Definitions implements DriverInterface {
     /**
      * @var array The tokens corresponding to DatabaseTypeComparison enumerations.
      */
-    public $comparisonTypes = array(
+    public $comparisonTypes = [
         Comparison::equals            => '=',
         Comparison::assignment        => '=',
         Comparison::in                => 'IN',
@@ -212,14 +210,14 @@ abstract class SQL_Definitions implements DriverInterface {
         Comparison::greaterThanEquals => '>=',
         Comparison::search            => 'LIKE',
         Comparison::binaryAnd         => '&',
-    );
+    ];
 
     /**
      * @var array The tokens corresponding with 'both' and 'either' concatenations.
      */
-    public $concatTypes = array(
+    public $concatTypes = [
         'both' => ' AND ', 'either' => ' OR ', 'not' => ' NOT '
-    );
+    ];
 
 
 
@@ -231,48 +229,48 @@ abstract class SQL_Definitions implements DriverInterface {
     /**
      * @var array The phrases that identify the three supported key types, 'primary', 'unique', and 'index'
      */
-    public $keyTypeConstants = array(
+    public $keyTypeConstants = [
         Index\Type::fulltext => 'FULLTEXT',
         Index\Type::primary  => 'PRIMARY',
         Index\Type::unique   => 'UNIQUE',
         Index\Type::index    => '',
-    );
+    ];
 
     /**
      * @var array The phrases that correspond with the supported default phrases, currently only '__TIME__'
      */
-    public $defaultPhrases = array(
+    public $defaultPhrases = [
         '__TIME__' => 'CURRENT_TIMESTAMP',
-    );
+    ];
 
     /**
      * @var array A list of distinct DB engine classifications the DBMS supports.
      *   'memory' is an engine that stores all or most of its data in memory, and whose data may be lost on restart
      *   'general' is an engine that stores all or most of its data on disk, and which supports transactions, permanence, and so-on.
      */
-    public $storeTypes = array(Engine::memory, Engine::general);
+    public $storeTypes = [Engine::memory, Engine::general];
 
     /*
      * todo: remove (replace with storeTypes)
      */
-    public $tableTypes = array(Engine::memory, Engine::general);
+    public $tableTypes = [Engine::memory, Engine::general];
 
     /**
      * @var array Various datatype information. This information should only be needed when creating and altering table columns.
      */
-    public $dataTypes = array();
+    public $dataTypes = [];
 
     /**
      * @var array The tokens to use for different index types. If empty, index types will not be specified on creation.
      */
-    public $indexStorages = array();
+    public $indexStorages = [];
 
     /**
      * @var array The values that should be used for boolean "true" and "false".
      */
-    public $boolValues = array(
+    public $boolValues = [
         true => 1, false => 0,
-    );
+    ];
 
 
 
@@ -381,30 +379,5 @@ abstract class SQL_Definitions implements DriverInterface {
      *    'identity' - Use IDENTITY(1,1)
      */
     public $serialMode = 'autoIncrement';
-
-
-
-    /*********************************************************
-     ************************ START **************************
-     ****************** Interface Methods ********************
-     *********************************************************/
-
-    abstract public function connect($host, $port, $username, $password, $database = false);
-    abstract public function getVersion();
-    abstract public function getLastError();
-    abstract public function close();
-    abstract public function selectDatabase($database);
-    abstract public function escape($text, $context);
-    abstract public function query($rawQuery);
-    abstract public function queryReturningResult($rawQuery): ResultInterface;
-    abstract public function getLastInsertId();
-    abstract public function startTransaction();
-    abstract public function endTransaction();
-    abstract public function rollbackTransaction();
-
-
-    abstract public function getTablesAsArray(DatabaseSQL $database);
-    abstract public function getTableColumnsAsArray(DatabaseSQL $database);
-    abstract public function getTableConstraintsAsArray(DatabaseSQL $database);
 
 }

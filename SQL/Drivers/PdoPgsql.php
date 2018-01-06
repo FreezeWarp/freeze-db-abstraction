@@ -1,8 +1,7 @@
 <?php
-
 namespace Database\SQL\Drivers;
 
-use Database\SQL\MySQL_Definitions;
+use Database\SQL\Pgsql_Definitions;
 use Database\SQL\PDO_Trait;
 
 /**
@@ -10,8 +9,7 @@ use Database\SQL\PDO_Trait;
  *
  * @package Database\SQL
  */
-class PdoMysql extends MySQL_Definitions
-{
+class PdoPgsql extends Pgsql_Definitions {
     use PDO_Trait;
 
     public $stringQuoteStart = '';
@@ -24,8 +22,7 @@ class PdoMysql extends MySQL_Definitions
      */
     public $stringFuzzy = '';
 
-    public function connect($host, $port, $username, $password, $database = false)
-    {
-        return $this->pdoConnect("mysql", $host, $port, $username, $password, $database);
+    public function connect($host, $port, $username, $password, $database = false) {
+        return $this->pdoConnect("pgsql", $host, $port, $username, $password, $database);
     }
 }

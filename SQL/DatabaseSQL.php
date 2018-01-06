@@ -628,10 +628,16 @@ class DatabaseSQL extends Database
      */
     public function rawQuery($query)
     {
-        if ($this->returnQueryString > 0) {
+        if ($query === false && $this->returnQueryString > 0) {
             $this->returnQueryString--;
 
-            return $query;
+            return false;
+        }
+
+        elseif ($this->returnQueryString > 0) {
+            $this->returnQueryString--;
+
+            return $this->sqlInterface->query($query, true);
         }
 
         else {
@@ -1385,7 +1391,7 @@ class DatabaseSQL extends Database
                 break;
         }
 
-        return false;
+        return $this->rawQuery(false);
     }
 
 
@@ -1812,7 +1818,7 @@ class DatabaseSQL extends Database
         $tableConstraints = $this->getTableConstraintsAsArray();
 
         if (!$this->sqlInterface->foreignKeyMode) {
-            return true;
+            return $this->rawQuery(false);
         }
 
         if (isset($tableConstraints[strtolower($tableName)]) && in_array($constraintName, $tableConstraints[strtolower($tableName)])) {
@@ -1833,7 +1839,7 @@ class DatabaseSQL extends Database
             }
         }
 
-        return false;
+        return $this->rawQuery(false);
     }
 
 
@@ -2350,19 +2356,24 @@ class DatabaseSQL extends Database
 
 
                 /* Full Text Searching */
-                if ($value->comparison === Comparison::fulltextSearch
-                    && $this->sqlInterface->getLanguage() === 'mysql') {
-                    $sideTextFull[$i] = 'MATCH (' . $this->formatValue(Type\Type::column, $column) . ') AGAINST (' . $this->formatValue(DatabaseSQL::FORMAT_VALUE_DETECT, $value) . ' IN NATURAL LANGUAGE MODE)';
-                }
+                if ($value->comparison === Comparison::fulltextSearch) {
+                    switch ($this->sqlInterface->getLanguage()) {
+                        case 'mysql':
+                            $sideTextFull[$i] = 'MATCH (' . $this->formatValue(Type\Type::column, $column) . ') AGAINST (' . $this->formatValue(DatabaseSQL::FORMAT_VALUE_DETECT, $value) . ' IN NATURAL LANGUAGE MODE)';
+                        break;
 
-                elseif ($value->comparison === Comparison::fulltextSearch
-                    && $this->sqlInterface->getLanguage() === 'pgsql') {
-                    $sideTextFull[$i] = 'to_tsvector (\'english\', ' . $this->formatValue(Type\Type::column, $column) . ') @@ to_tsquery(\'english\', ' . $this->formatValue(DatabaseSQL::FORMAT_VALUE_DETECT, $value) . ')';
-                }
+                        case 'pgsql':
+                            $sideTextFull[$i] = 'to_tsvector (\'english\', ' . $this->formatValue(Type\Type::column, $column) . ') @@ to_tsquery(\'english\', ' . $this->formatValue(DatabaseSQL::FORMAT_VALUE_DETECT, $value) . ')';
+                        break;
 
-                elseif ($value->comparison === Comparison::fulltextSearch
-                    && $this->sqlInterface->getLanguage() === 'sqlsrv') {
-                    $sideTextFull[$i] = 'CONTAINS(' . $this->formatValue(Type\Type::column, $column) . ', ' . $this->formatValue(DatabaseSQL::FORMAT_VALUE_DETECT, $value) . ')';
+                        case 'sqlsrv':
+                            $sideTextFull[$i] = 'CONTAINS(' . $this->formatValue(Type\Type::column, $column) . ', ' . $this->formatValue(DatabaseSQL::FORMAT_VALUE_DETECT, $value) . ')';
+                        break;
+
+                        default:
+                            throw new Exception('Fulltext search is unsupported in the current engine.');
+                        break;
+                    }
                 }
 
                 /* Normal Boolean Logic */
@@ -2408,8 +2419,12 @@ class DatabaseSQL extends Database
 
                     // Combine l and rvalues
                     // TODO: $this->null(NOT EQUALS)
-                    if ($value->type === Type::null) {
-                        $sideTextFull[$i] = "{$sideText['left']} IS " . ($this->startsWith($key, '!') ? "NOT " : "") . "NULL";
+                    if ($value->type === Type\Type::null) {
+                        $sideTextFull[$i] = "{$sideText['left']} IS "
+                            . ($this->startsWith($key, '!')
+                                ? $this->sqlInterface->concatTypes['not'] . " "
+                                : ""
+                            ) . "NULL";
                     }
 
                     elseif ((strlen($sideText['left']) > 0) && (strlen($sideText['right']) > 0)) {
