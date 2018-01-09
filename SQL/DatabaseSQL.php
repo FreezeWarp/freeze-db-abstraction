@@ -1101,7 +1101,7 @@ class DatabaseSQL extends Database
                 // We use triggers here when the SQL implementation is otherwise stubborn, but FreezeMessenger is designed to only do this when it would otherwise be tedious. Manual setting of values is preferred in most cases. Right now, only __TIME__ supports them.
                 // TODO: language trigger support check
                 if ($column['default'] === '__TIME__') {
-                    $triggerString = "{TABLENAME}_{$columnName}__TIME__";
+                    $triggerString = "{$tableName}_{$columnName}__TIME__";
                     $triggerName = $this->formatValue(DatabaseSQL::FORMAT_VALUE_INDEX, $triggerString);
 
                     switch ($this->sqlInterface->getLanguage()) {
@@ -1115,12 +1115,12 @@ class DatabaseSQL extends Database
                         case 'mysql': // This one is kinda just for testing. We should replace it with DEFAULT UNIX_TIMESTAMP.
                             $triggers[] = "DROP TRIGGER IF EXISTS {$triggerName}";
                             $triggers[] = "CREATE TRIGGER {$triggerName} BEFORE INSERT ON "
-                                . $this->formatValue(self::FORMAT_VALUE_TABLE, '{TABLENAME}')
+                                . $this->formatValue(self::FORMAT_VALUE_TABLE, $tableName)
                                 . " FOR EACH ROW SET NEW.{$columnName} = IF(NEW.{$columnName}, NEW.{$columnName}, UNIX_TIMESTAMP(NOW()))";
                             break;
 
                         case 'pgsql':
-                            $triggers[] = "DROP TRIGGER IF EXISTS {$triggerName} ON " . $this->formatValue(DatabaseSQL::FORMAT_VALUE_TABLE, '{TABLENAME}');
+                            $triggers[] = "DROP TRIGGER IF EXISTS {$triggerName} ON " . $this->formatValue(DatabaseSQL::FORMAT_VALUE_TABLE, $tableName);
                             $triggers[] = "CREATE OR REPLACE FUNCTION {$triggerString}_function()
                             RETURNS TRIGGER AS $$
                             BEGIN
@@ -1132,7 +1132,7 @@ class DatabaseSQL extends Database
                             $$ language 'plpgsql';";
 
                             $triggers[] = "CREATE TRIGGER {$triggerName} BEFORE INSERT ON "
-                                . $this->formatValue(DatabaseSQL::FORMAT_VALUE_TABLE, '{TABLENAME}')
+                                . $this->formatValue(DatabaseSQL::FORMAT_VALUE_TABLE, $tableName)
                                 . " FOR EACH ROW EXECUTE PROCEDURE {$triggerString}_function()";
                             break;
                     }
@@ -1298,7 +1298,7 @@ class DatabaseSQL extends Database
             switch ($this->sqlInterface->commentMode) {
                 case 'useCommentOn':
                     $triggers[] = 'COMMENT ON TABLE '
-                        . $this->formatValue(DatabaseSQL::FORMAT_VALUE_TABLE, '{TABLENAME}')
+                        . $this->formatValue(DatabaseSQL::FORMAT_VALUE_TABLE, $tableNameI)
                         . ' IS '
                         . $this->formatValue(Type\Type::string, $tableComment);
                     break;
@@ -1911,7 +1911,6 @@ class DatabaseSQL extends Database
 
     /**
      * Run a series of SQL statements in sequence, returning true if all run successfully.
-     * {TABLENAME} will be converted to $tableName, if present in any trigger.
      * If {@link holdTriggers} is enabled, the trigger statements will instead by placed in {@link triggerQueue}
      *
      * @param $tableName string The SQL tablename.
@@ -1923,9 +1922,7 @@ class DatabaseSQL extends Database
     {
         $return = true;
 
-        foreach ((array) $triggers AS $trigger) {
-            $triggerText = str_replace('{TABLENAME}', $tableName, $trigger);
-
+        foreach ((array) $triggers AS $triggerText) {
             if ($this->holdTriggers) {
                 $this->triggerQueue[] = $triggerText;
             }
