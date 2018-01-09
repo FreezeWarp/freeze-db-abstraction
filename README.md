@@ -1,6 +1,6 @@
 Frozen Database Abstraction Layer
 ==========================
-This is an advanced database abstraction layer developed alongside (FreezeMessenger)[github.com/FreezeWarp/freeze-messenger/]. It is powerful and flexible, with a number of features detailed below, though should still be considered "beta" and it's overall method format will likely be significantly overhauled in the future.
+This is an advanced database abstraction layer developed alongside [FreezeMessenger](github.com/FreezeWarp/freeze-messenger/). It is powerful and flexible, with a number of features detailed below, though should still be considered "beta" and it's overall method format will likely be significantly overhauled in the future.
 
 
 Some Database Principles
