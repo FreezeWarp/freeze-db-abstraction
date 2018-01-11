@@ -20,7 +20,7 @@ use Database\Type\Comparison;
  */
 trait PDO_Trait
 {
-    use ManualInsertID_Trait, ReconnectOnSelectDatabase_Trait;
+    use ManualInsertID_Trait;
 
 
     /**
@@ -34,6 +34,11 @@ trait PDO_Trait
     private $preparedParams = [];
 
     /**
+     * @var array
+     */
+    private $preparedTypes = [];
+
+    /**
      * @var string An error string registered on connection failure.
      */
     private $connectionError;
@@ -43,27 +48,6 @@ trait PDO_Trait
      */
     private $lastQueryError = [];
 
-
-    public function pdoConnect($protocol, $host, $port, $username, $password, $database = false)
-    {
-        // keep the user and password in memory to allow for reconnects with selectdb
-        $this->connectionUser = $username;
-        $this->connectionPassword = $password;
-
-        try {
-            $this->connection = new PDO("$protocol:" . ($database ? "dbname=$database" : '') . ";host=$host:$port", $username, $password);
-            $this->connection->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-            $this->registerConnection($host, $port, $username, $password);
-
-            $this->versionCheck();
-        } catch (PDOException $e) {
-            $this->connectionError = $e->getMessage();
-
-            return false;
-        }
-
-        return $this->connection;
-    }
 
     public function getVersion()
     {
@@ -91,15 +75,23 @@ trait PDO_Trait
             case Type\Type::timestamp:
             case Type\Type::bitfield:
             case Type\Type::float:
-            case Type\Type::blob:
             case Type\Type::string:
                 $this->preparedParams[] = $text;
+                $this->preparedTypes[] = null;
 
                 return '?';
             break;
+            
+            case Type\Type::blob:
+                $this->preparedParams[] = $text;
+                $this->preparedTypes[] = PDO::PARAM_LOB;
+
+                return '?';
+                break;
 
             case Type\Type::search:
                 $this->preparedParams[] = '%' . $text . '%';
+                $this->preparedTypes[] = null;
 
                 return '?';
             break;
@@ -115,13 +107,19 @@ trait PDO_Trait
             $query = $this->connection->prepare($rawQuery);
 
             // Bind all available params as soon as possible, in case we need to return the PDOStatement object instead of executing it.
-            $paramNum = 1;
-            foreach ($this->preparedParams AS $preparedParam) {
-                $query->bindValue($paramNum++, $preparedParam);
-            }
+            $paramCount = substr_count($rawQuery, '?');
 
-            // Clear the list of prepared parameters.
-            $this->preparedParams = [];
+            // Pop the needed number of params off of preparedParams
+            $params = array_slice($this->preparedParams, count($this->preparedParams) - $paramCount);
+            $this->preparedParams = array_slice($this->preparedParams, 0, count($this->preparedParams) - $paramCount);
+            
+            $types = array_slice($this->preparedTypes, count($this->preparedTypes) - $paramCount);
+            $this->preparedTypes = array_slice($this->preparedTypes, 0, count($this->preparedTypes) - $paramCount);
+
+            // Bind the params
+            for ($i = 0; $i < count($params); $i++) {
+                $query->bindValue($i + 1, $params[$i], $types[$i]);
+            }
         }
         else {
             $query = $rawQuery;
@@ -139,7 +137,10 @@ trait PDO_Trait
                     return false;
                 }
 
-                $this->incrementLastInsertId($this->connection->lastInsertId());
+                if ($this->getLanguage() === 'mysql') {
+                    $this->incrementLastInsertId($this->connection->lastInsertId());
+                }
+
                 $this->lastQueryError = [];
 
                 return $query;
@@ -215,8 +216,16 @@ trait PDO_Trait
             {
                 if ($this->resultIndex >= count($this->data))
                     return false;
-                else
-                    return $this->data[$this->resultIndex++];
+
+                else {
+                    $data = $this->data[$this->resultIndex++];
+
+                    foreach ($data AS &$datum) {
+                        if (is_resource($datum)) $datum = stream_get_contents($datum);
+                    }
+
+                    return $data;
+                }
             }
 
             public function getCount()

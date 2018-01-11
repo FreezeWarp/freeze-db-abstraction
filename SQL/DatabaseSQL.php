@@ -628,8 +628,9 @@ class DatabaseSQL extends Database
      */
     public function rawQuery($query)
     {
-        if ($query === false && $this->returnQueryString > 0) {
-            $this->returnQueryString--;
+        if ($query === false) {
+            if ($this->returnQueryString > 0)
+                $this->returnQueryString--;
 
             return false;
         }
@@ -1169,14 +1170,16 @@ class DatabaseSQL extends Database
 
 
             /* Generate COMMENT ON Statements, If Needed */
-            switch ($this->sqlInterface->commentMode) {
-                case 'useCommentOn':
-                    $triggers[] = $this->returnQueryString()->createTableColumnComment($tableName, $columnName, $column['comment']);
+            if ($column['comment']) {
+                switch ($this->sqlInterface->commentMode) {
+                    case 'useCommentOn':
+                        $triggers[] = $this->returnQueryString()->createTableColumnComment($tableName, $columnName, $column['comment']);
                     break;
 
-                case 'useAttributes':
-                    $typePiece .= ' COMMENT ' . $this->formatValue(Type\Type::string, $column['comment']);
+                    case 'useAttributes':
+                        $typePiece .= ' COMMENT ' . $this->formatValue(Type\Type::string, $column['comment']);
                     break;
+                }
             }
 
 
@@ -1299,10 +1302,7 @@ class DatabaseSQL extends Database
             // In this mode, we add comments with separate SQL statements at the end.
             switch ($this->sqlInterface->commentMode) {
                 case 'useCommentOn':
-                    $triggers[] = 'COMMENT ON TABLE '
-                        . $this->formatValue(DatabaseSQL::FORMAT_VALUE_TABLE, $tableNameI)
-                        . ' IS '
-                        . $this->formatValue(Type\Type::string, $tableComment);
+                    $triggers[] = $this->returnQueryString()->createTableComment($tableNameI, $tableComment);
                     break;
 
                 case 'useAttributes':
@@ -1354,7 +1354,7 @@ class DatabaseSQL extends Database
             );
 
             $return = $return &&
-                $this->executeTriggers($tableNameI, $triggers);
+                $this->executeTriggers($triggers);
         }
 
         $this->endTransaction();
@@ -1450,7 +1450,7 @@ class DatabaseSQL extends Database
                 . ' '
                 . implode($columns, ', ')
             )
-            && $this->executeTriggers($tableName, $triggers);
+            && $this->executeTriggers($triggers);
     }
 
 
@@ -1473,7 +1473,7 @@ class DatabaseSQL extends Database
                 . ' '
                 . implode($columns, ', ')
             )
-            && $this->executeTriggers($tableName, $triggers);
+            && $this->executeTriggers($triggers);
     }
 
 
@@ -1592,7 +1592,7 @@ class DatabaseSQL extends Database
 
         return $duringTableCreation
             ? [$indexes, $triggers]
-            : $this->executeTriggers($tableName, $triggers);
+            : $this->executeTriggers($triggers);
     }
 
 
@@ -1652,11 +1652,14 @@ class DatabaseSQL extends Database
     public function createIndex($tableName, $indexName, $indexType = Index\Type::index, $indexStorage = '', $indexComment = '', $primaryKey = null)
     {
 
+        $triggers = [];
+
         // Transfrom the index name into one that is unique to the database.
         $alteredIndexName = $this->getIndexName($tableName, $indexName);
 
         // Get the columns referenced by an index name.
         $indexCols = $this->getIndexColsFromIndexName($indexName);
+
 
 
         /* CREATE x INDEX ON table */
@@ -1708,6 +1711,8 @@ class DatabaseSQL extends Database
         }
 
         // Create comments
+
+        // Create Comment Trigger, if Needed
         if ($indexComment) {
             switch ($this->sqlInterface->commentMode) {
                 case 'useAttributes':
@@ -1715,7 +1720,8 @@ class DatabaseSQL extends Database
                 break;
 
                 case 'useCommentOn':
-                    $indexStatement .= '; ' . $this->returnQueryString()->createIndexComment($alteredIndexName, $indexComment);
+                    //disabled because the order doesn't work with PDO
+                    //$triggers[] = $this->returnQueryString()->createIndexComment($alteredIndexName, $indexComment);
                 break;
             }
         }
@@ -1723,6 +1729,11 @@ class DatabaseSQL extends Database
 
         return $this->rawQuery($indexStatement);
 
+        // doesn't quite work with PDO
+        /*if ($query = $this->rawQuery($indexStatement)) {
+            $this->executeTriggers($triggers);
+            return $query;
+        };*/
     }
 
     private function getIndexName($tableName, $indexName) : string
@@ -1920,12 +1931,12 @@ class DatabaseSQL extends Database
      *
      * @return bool true if all queries successful, false if any fails
      */
-    public function executeTriggers($tableName, $triggers)
+    public function executeTriggers($triggers)
     {
         $return = true;
 
         foreach ((array) $triggers AS $triggerText) {
-            if ($this->holdTriggers) {
+            if ($this->holdTriggers || $this->returnQueryString) {
                 $this->triggerQueue[] = $triggerText;
             }
             else {

@@ -135,4 +135,13 @@ abstract class Pgsql_Definitions extends SQL_Definitions
     {
         return 'pgsql';
     }
+
+    public function versionCheck()
+    {
+        if (floatval($this->getVersion()) < 9.5)
+            $this->upsertMode = 'selectThenInsertOrUpdate';
+
+        if (floatval($this->getVersion()) < 10)
+            $this->indexStorages = [];
+    }
 }

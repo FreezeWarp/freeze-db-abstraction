@@ -26,6 +26,7 @@ class PdoSqlsrv extends SQLSrv_Definitions
 
     public function connect($host, $port, $username, $password, $database = false)
     {
+        die('PDO SqlSrv is Unimplemented.');
         return $this->pdoConnect("sqlsrv", $host, $port, $username, $password, $database);
     }
 }
