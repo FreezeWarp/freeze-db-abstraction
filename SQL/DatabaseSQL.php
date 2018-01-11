@@ -2198,16 +2198,32 @@ class DatabaseSQL extends Database
                         if ($direction->type == Type\Type::arraylist) {
                             if (count($direction->value) == 0) continue;
 
-                            if ($this->sqlInterface->getLanguage() == 'mysql') {
-                                $list = $direction->value;
-                                rsort($list);
-                                $list = array_merge([$this->col($sortColumn)], $list);
+                            switch ($this->sqlInterface->getLanguage()) {
+                                case 'mysql':
+                                    $list = $direction->value;
+                                    rsort($list);
+                                    $list = array_merge([$this->col($sortColumn)], $list);
 
-                                $finalQuery['sort'][] = 'FIELD' . $this->formatValue(Type\Type::arraylist, $list) . ' ' . $this->sqlInterface->sortOrderDesc;
-                            }// todo: postgresql using case
+                                    $finalQuery['sort'][] = 'FIELD' . $this->formatValue(Type\Type::arraylist, $list) . ' ' . $this->sqlInterface->sortOrderDesc;
+                                break;
+
+                                case 'pgsql':
+                                    $sortQuery = ' CASE ' . $this->formatValue(Type\Type::column, $sortColumn);
+
+                                    $list = $direction->value;
+                                    foreach ($list AS $listEntry) {
+                                        $sortQuery .= ' WHEN '
+                                            . $this->formatValue(DatabaseSQL::FORMAT_VALUE_DETECT, $listEntry)
+                                            . ' THEN 1';
+                                    }
+
+                                    $sortQuery .= " ELSE 2 END";
+                                    $finalQuery['sort'][] = $sortQuery;
+                                break;
+                            }
                         }
                         else {
-                            $finalQuery['sort'][] = $this->recurseBothEither([$sortColumn => $direction]) . ' ' . $this->sqlInterface->sortOrderDesc ;
+                            $finalQuery['sort'][] = $this->recurseBothEither([$sortColumn => $direction], $reverseAlias) . ' ' . $this->sqlInterface->sortOrderDesc;
                         }
                     }
 
