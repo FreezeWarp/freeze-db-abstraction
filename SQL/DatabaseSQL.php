@@ -1526,7 +1526,7 @@ class DatabaseSQL extends Database
                 && $index['type'] !== Index\Type::primary) {
 
                 // Delete any old index with the given name
-                $this->deleteIndex($tableName, $indexName);
+                $triggers[] = $this->returnQueryString()->deleteIndex($tableName, $indexName);
 
                 // Add the CREATE INDEX statement to the triggers.
                 $triggers[] = $this->returnQueryString()->createIndex($tableName, $indexName, $index['type'], $index['storage'] ?? '', $index['comment'] ?? '', $primaryKey);
@@ -1604,7 +1604,7 @@ class DatabaseSQL extends Database
      *
      * @return bool True on success, false on failure.
      */
-    public function deleteIndex($tableName, $indexName) : bool
+    public function deleteIndex($tableName, $indexName)
     {
 
         $alteredIndexName = $this->getIndexName($tableName, $indexName);
@@ -1632,7 +1632,7 @@ class DatabaseSQL extends Database
                 ));
             }
 
-            return false;
+            return $this->rawQuery(false);
         }
 
     }
