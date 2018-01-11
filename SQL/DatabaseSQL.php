@@ -1101,39 +1101,41 @@ class DatabaseSQL extends Database
                 // We use triggers here when the SQL implementation is otherwise stubborn, but FreezeMessenger is designed to only do this when it would otherwise be tedious. Manual setting of values is preferred in most cases. Right now, only __TIME__ supports them.
                 // TODO: language trigger support check
                 if ($column['default'] === '__TIME__') {
-                    $triggerString = "{$tableName}_{$columnName}__TIME__";
-                    $triggerName = $this->formatValue(DatabaseSQL::FORMAT_VALUE_INDEX, $triggerString);
+                    $tableNameEscaped = $this->formatValue(self::FORMAT_VALUE_TABLE, $tableName);
+                    $triggerName = "{$tableName}_{$columnName}__TIME__";
+                    $triggerNameEscaped = $this->formatValue(self::FORMAT_VALUE_INDEX, $triggerName);
+                    $columnNameEscaped = $this->formatValue(Type\Type::column, $columnName);
 
                     switch ($this->sqlInterface->getLanguage()) {
                         case 'sqlsrv':
                             $triggers[] = 'ALTER TABLE '
                                 . $this->formatValue(DatabaseSQL::FORMAT_VALUE_TABLE, $tableName)
-                                . " ADD CONSTRAINT {$triggerName} DEFAULT DATEDIFF(s, '1970-01-01 00:00:00', GETUTCDATE()) FOR "
-                                . $this->formatValue(Type\Type::column, $columnName);
+                                . " ADD CONSTRAINT {$triggerNameEscaped} DEFAULT DATEDIFF(s, '1970-01-01 00:00:00', GETUTCDATE()) FOR {$columnNameEscaped}";
                             break;
 
                         case 'mysql': // This one is kinda just for testing. We should replace it with DEFAULT UNIX_TIMESTAMP.
-                            $triggers[] = "DROP TRIGGER IF EXISTS {$triggerName}";
-                            $triggers[] = "CREATE TRIGGER {$triggerName} BEFORE INSERT ON "
-                                . $this->formatValue(self::FORMAT_VALUE_TABLE, $tableName)
-                                . " FOR EACH ROW SET NEW.{$columnName} = IF(NEW.{$columnName}, NEW.{$columnName}, UNIX_TIMESTAMP(NOW()))";
+                            $triggers[] = "DROP TRIGGER IF EXISTS {$triggerNameEscaped}";
+                            $triggers[] = "CREATE TRIGGER {$triggerNameEscaped}
+                                BEFORE INSERT ON {$tableNameEscaped}
+                                FOR EACH ROW
+                                    SET NEW.{$columnNameEscaped} = IF(NEW.{$columnNameEscaped}, NEW.{$columnNameEscaped}, UNIX_TIMESTAMP(NOW()))";
                             break;
 
                         case 'pgsql':
-                            $triggers[] = "DROP TRIGGER IF EXISTS {$triggerName} ON " . $this->formatValue(DatabaseSQL::FORMAT_VALUE_TABLE, $tableName);
-                            $triggers[] = "CREATE OR REPLACE FUNCTION {$triggerString}_function()
-                            RETURNS TRIGGER AS $$
-                            BEGIN
-                                IF NEW.\"{$columnName}\" IS NULL THEN
-                                    NEW.\"{$columnName}\" := FLOOR(EXTRACT(EPOCH FROM NOW()));
-                                END IF;
-                                RETURN NEW;
-                            END;
-                            $$ language 'plpgsql';";
+                            $functionNameEscaped = $this->formatValue(self::FORMAT_VALUE_INDEX, "{$triggerName}_function");
 
-                            $triggers[] = "CREATE TRIGGER {$triggerName} BEFORE INSERT ON "
-                                . $this->formatValue(DatabaseSQL::FORMAT_VALUE_TABLE, $tableName)
-                                . " FOR EACH ROW EXECUTE PROCEDURE {$triggerString}_function()";
+                            $triggers[] = "DROP TRIGGER IF EXISTS {$triggerNameEscaped} ON {$tableNameEscaped}";
+                            $triggers[] = "CREATE OR REPLACE FUNCTION {$functionNameEscaped}() RETURNS TRIGGER AS $$
+                                BEGIN
+                                    IF NEW.{$columnNameEscaped} IS NULL THEN
+                                        NEW.{$columnNameEscaped} := FLOOR(EXTRACT(EPOCH FROM NOW()));
+                                    END IF;
+                                    RETURN NEW;
+                                END;
+                                $$ language 'plpgsql';";
+                            $triggers[] = "CREATE TRIGGER {$triggerNameEscaped}
+                                BEFORE INSERT ON {$tableNameEscaped}
+                                FOR EACH ROW EXECUTE PROCEDURE {$functionNameEscaped}()";
                             break;
                     }
                 }
