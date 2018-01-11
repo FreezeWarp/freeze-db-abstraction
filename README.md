@@ -29,7 +29,7 @@ Supported Drivers
 2.  Postgres
 
     1.  __pgsql__ is a newer driver that supports postgres' LISTEN/NOTIFY functionality. It will typically be somewhat slower than mysql (due to lacking the memory tables used to ensure validation occurs quickly, and requiring certain data to be transformed after retrieval), and older versions (<9.5) will also not ensure full ACIDity, as the abstraction layer will emulate upsert in these versions by executing chained "IF SELECT() THEN UPDATE ELSE INSERT" queries (in the form of three separate queries).
-    2.  __pdoPgsql__ is planned.
+    2.  __pdoPgsql__ works like __pdoMysql__, and is fully supported.
 
 3.  SqlServer
 
