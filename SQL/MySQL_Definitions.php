@@ -171,6 +171,11 @@ abstract class MySQL_Definitions extends SQL_Definitions
     public $usePartition = true;
 
     /**
+     * @var bool We enable MySQL's RENAME TABLE syntax.
+     */
+    public $tableRenameMode = 'renameTable';
+
+    /**
      * @var bool We enable specifying the storage of indexes written during table creation.
      */
     public $indexStorageOnCreate = true;
