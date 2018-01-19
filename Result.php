@@ -162,16 +162,24 @@ class Result
     }
 
 
-    function getAsObjects($objectType, $key) {
+    /**
+     * Get an array of object instances. Each object instance will be constructed with a Result object instance as its sole parameter.
+     *
+     * @param object $objectType The name of the object to instantiate for each row.
+     * @param bool|string $key An object parameter to index the result array by, if any.
+     *
+     * @return array
+     */
+    function getAsObjects($objectType, $key = false) {
         $return = array();
 
         for ($i = 0; $i < $this->count; $i++) {
-            $object = new $objectType($this);
+            $object = $this->getAsObject($objectType);
 
             if ($key)
                 $return[$object->{$key}] = $object;
             else
-                $return[] = new $object;
+                $return[] = $object;
 
         }
 
