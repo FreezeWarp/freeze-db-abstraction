@@ -162,6 +162,27 @@ class Result
     }
 
 
+    function getAsObjects($objectType, $key) {
+        $return = array();
+
+        for ($i = 0; $i < $this->count; $i++) {
+            $object = new $objectType($this);
+
+            if ($key)
+                $return[$object->{$key}] = $object;
+            else
+                $return[] = new $object;
+
+        }
+
+        return $return;
+    }
+
+    function getAsObject($objectType) {
+        return new $objectType($this);
+    }
+
+
     /**
      * Get a single value from the current resultset.
      *
