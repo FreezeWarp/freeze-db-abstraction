@@ -165,7 +165,7 @@ class Result
     /**
      * Get an array of object instances. Each object instance will be constructed with a Result object instance as its sole parameter.
      *
-     * @param object $objectType The name of the object to instantiate for each row.
+     * @param object|string $objectType The name of the object to instantiate for each row.
      * @param bool|string $key An object parameter to index the result array by, if any.
      *
      * @return array
@@ -186,6 +186,13 @@ class Result
         return $return;
     }
 
+    /**
+     * Get an object instances. Each object instance will be constructed with a Result object instance as its sole parameter.
+     *
+     * @param object|string $objectType The name of the object to instantiate for the row.
+     *
+     * @return Object
+     */
     function getAsObject($objectType) {
         return new $objectType($this);
     }
@@ -221,7 +228,7 @@ class Result
         while ($row = $this->fetchAsArray()) {
             $ref =& $columnValues;
             for ($i = 1; $i < count($columns); $i++) {
-                $ref =& $ref[$row[$columns[$i - 1]]];
+                $ref =& $ref[$this->applyColumnTransformation($columns[$i - 1], $row[$columns[$i - 1]])];
             }
 
             $ref[] = $this->applyColumnTransformation(end($columns), $row[end($columns)]);
@@ -304,9 +311,10 @@ class Result
     {
         if (isset($this->reverseAlias[$column])) {
             $tableName = $this->reverseAlias[$column][0];
+            $columnName = $this->reverseAlias[$column][1];
 
-            if (isset($this->database->encode[$tableName][$column]) && $this->database->encode[$tableName][$column][2]) {
-                return call_user_func($this->database->encode[$tableName][$column][2], $value);
+            if (isset($this->database->encode[$tableName][$columnName]) && $this->database->encode[$tableName][$columnName][2]) {
+                return call_user_func($this->database->encode[$tableName][$columnName][2], $value);
             }
 
             else {
