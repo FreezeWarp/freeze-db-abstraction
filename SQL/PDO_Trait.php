@@ -236,4 +236,3 @@ trait PDO_Trait
     }
 }
 
-?>

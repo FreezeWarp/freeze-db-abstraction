@@ -66,4 +66,3 @@ class Comparison {
      */
     const assignment = 1000;
 }
-?>

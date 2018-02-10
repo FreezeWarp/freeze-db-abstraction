@@ -1365,4 +1365,3 @@ abstract class Database
     abstract protected function databaseResultPipe($queryData, $reverseAlias, string $sourceQuery, Database $database, int $paginated = 0);
 }
 
-?>

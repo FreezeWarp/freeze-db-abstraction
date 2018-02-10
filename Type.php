@@ -23,4 +23,3 @@ class Type {
         $this->comparison = $comparison;
     }
 }
-?>
