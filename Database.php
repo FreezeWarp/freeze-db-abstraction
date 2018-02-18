@@ -112,6 +112,11 @@ abstract class Database
     protected $insertQueue = array();
 
     /**
+     * @var array An array of queued upsert queries.
+     */
+    protected $upsertQueue = array();
+
+    /**
      * @var array Configuration data that modifies how data is stored on the way to the database, and on return.
      * Database drivers are encourage to support, but not required to if they can natively process all core PHP datatypes, including arrays.
      */

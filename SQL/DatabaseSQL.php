@@ -2796,6 +2796,36 @@ class DatabaseSQL extends Database
             $tableName = $this->getTableNameTransformation($tableName, $conditionArray);
         }
 
+        /* Query Queueing */
+        if ($this->autoQueue) {
+            if (!empty($dataArrayOnInsert)
+                || ($this->sqlInterface->upsertMode !== 'onDuplicateKey'
+                    && $this->sqlInterface->upsertMode !== 'onConflictDoUpdate')
+            ) {
+                return $this->upsertCore($tableName, $conditionArray, $dataArray, $dataArrayOnInsert);
+            }
+
+            return $this->queueUpsert($tableName, $conditionArray, $dataArray);
+        }
+
+        else
+            return $this->upsertCore($tableName, $conditionArray, $dataArray, $dataArrayOnInsert);
+    }
+
+
+
+    /**
+     * Performs the core, SQL-only part of upsertion, without concern for partitioning, collection triggers, etc.
+     * @see DatabaseSQL::upsert()
+     *
+     * @param string $tableName {@see DatabaseSQL::insert()}
+     * @param mixed  $dataArrays {@see DatabaseSQL::insert()}
+     *
+     * @return bool
+     * @throws Exception
+     */
+    private function upsertCore($tableName, $conditionArray, $dataArray, $dataArrayOnInsert = [])
+    {
         $allArray = array_merge($dataArray, $dataArrayOnInsert, $conditionArray);
         $allColumns = array_keys($allArray);
         $allValues = array_values($allArray);
@@ -2805,10 +2835,10 @@ class DatabaseSQL extends Database
                 $query = 'INSERT INTO ' . $this->formatValue(DatabaseSQL::FORMAT_VALUE_TABLE, $tableName)
                     . $this->formatValue(DatabaseSQL::FORMAT_VALUE_TABLE_COLUMN_VALUES, $tableName, $allColumns, [$allValues])
                     . ' ON DUPLICATE KEY UPDATE ' . $this->formatValue(DatabaseSQL::FORMAT_VALUE_TABLE_UPDATE_ARRAY, $tableName, $dataArray);
-                break;
+            break;
 
             case 'onConflictDoUpdate':
-                 // Workaround for equations to use unambiguous excluded dataset.
+                // Workaround for equations to use unambiguous excluded dataset.
                 foreach ($dataArray AS &$dataElement) {
                     if ($this->isTypeObject($dataElement) && $dataElement->type === Type\Type::equation) {
                         $dataElement = $this->equation(str_replace('$', 'excluded.$', $dataElement->value)); // We create a new one because we don't want to update the one pointed to in allArray.
@@ -2820,7 +2850,7 @@ class DatabaseSQL extends Database
                     . ' ON CONFLICT '
                     . $this->formatValue(DatabaseSQL::FORMAT_VALUE_COLUMN_ARRAY, array_keys($conditionArray))
                     . ' DO UPDATE SET ' . $this->formatValue(DatabaseSQL::FORMAT_VALUE_TABLE_UPDATE_ARRAY, $tableName, $dataArray);
-                break;
+            break;
 
             case 'selectThenInsertOrUpdate':
                 if ($this->select([$tableName => array_keys($conditionArray)], $conditionArray)->getCount() > 0) {
@@ -2829,7 +2859,7 @@ class DatabaseSQL extends Database
                 else {
                     return @$this->insert($tableName, $allArray);
                 }
-                break;
+            break;
 
             case 'tryCatch':
                 try {
@@ -2837,7 +2867,7 @@ class DatabaseSQL extends Database
                 } catch (Exception $ex) {
                     return $this->update($tableName, $dataArray, $conditionArray);
                 }
-                break;
+            break;
 
             default:
                 throw new \Exception('Unrecognised upsert mode: ' . $this->sqlInterface->upsertMode);
@@ -2850,6 +2880,76 @@ class DatabaseSQL extends Database
         }
         else return false;
     }
+
+
+    /**
+     * Performs the core, SQL-only part of upsertion, without concern for partitioning, collection triggers, etc.
+     * @see DatabaseSQL::upsert()
+     *
+     * @param string $tableName {@see DatabaseSQL::insert()}
+     * @param mixed  $dataArrays {@see DatabaseSQL::insert()}
+     *
+     * @return bool
+     * @throws Exception
+     */
+    private function upsertCoreMulti($tableName, $updateCondition, $updateColumns, $dataArrays)
+    {
+        // Get the list of columns that composes all data arrays
+        $columns = [];
+        foreach ($dataArrays AS $dataArray) {
+            $columns = array_merge($columns, array_diff(array_keys($dataArray), $columns));
+        }
+
+        // Rebuild the data array so that all columns are in common
+        $mergedDataArrays = [];
+        foreach ($dataArrays AS $dataArray) {
+            $mergedDataArray = [];
+
+            foreach($columns AS $index => $column) {
+                $mergedDataArray[$index] = $dataArray[$column] ?? null;
+            }
+
+            $mergedDataArrays[] = $mergedDataArray;
+        }
+
+        switch ($this->sqlInterface->upsertMode) {
+            case 'onDuplicateKey':
+                $updateConditions = [];
+                foreach ($updateColumns AS $updateColumn) {
+                    $updateConditions[] = $this->formatValue(Type\Type::column, $updateColumn) . ' = VALUES(' . $this->formatValue(Type\Type::column, $updateColumn) . ')';
+                }
+
+                $query = 'INSERT INTO ' . $this->formatValue(DatabaseSQL::FORMAT_VALUE_TABLE, $tableName)
+                    . $this->formatValue(DatabaseSQL::FORMAT_VALUE_TABLE_COLUMN_VALUES, $tableName, $columns, $mergedDataArrays)
+                    . ' ON DUPLICATE KEY UPDATE ' . implode($this->sqlInterface->arraySeperator, $updateConditions);
+            break;
+
+            case 'onConflictDoUpdate':
+                $updateConditions = [];
+                foreach ($updateColumns AS $updateColumn) {
+                    $updateConditions[] = $this->formatValue(Type\Type::column, $updateColumn) . ' = excluded.' . $this->formatValue(Type\Type::column, $updateColumn) . ')';
+                }
+
+                $query = 'INSERT INTO ' . $this->formatValue(DatabaseSQL::FORMAT_VALUE_TABLE, $tableName)
+                    . $this->formatValue(DatabaseSQL::FORMAT_VALUE_TABLE_COLUMN_VALUES, $tableName, $columns, $mergedDataArrays)
+                    . ' ON CONFLICT '
+                    . $this->formatValue(DatabaseSQL::FORMAT_VALUE_COLUMN_ARRAY, $updateCondition)
+                    . ' DO UPDATE SET ' . implode($this->sqlInterface->arraySeperator, $updateConditions);
+            break;
+
+            default:
+                throw new Exception('Multiple upsert not supported in the current mode.');
+                break;
+        }
+
+        if ($queryData = $this->rawQuery($query)) {
+            $this->insertIdCallback($tableName);
+
+            return $queryData;
+        }
+        else return false;
+    }
+
 
     /*********************************************************
      ************************* END ***************************
@@ -2884,6 +2984,10 @@ class DatabaseSQL extends Database
 
     public function queueInsert($tableName, $dataArray) {
         $this->insertQueue[$tableName][] = $dataArray;
+    }
+
+    public function queueUpsert($tableName, $conditionArray, $dataArray) {
+        $this->upsertQueue[$tableName][implode(',', array_keys($conditionArray))][implode(',', array_keys($dataArray))][] = array_merge($conditionArray, $dataArray);
     }
 
 
@@ -2928,6 +3032,8 @@ class DatabaseSQL extends Database
             $deleteConditionsCombined = ['either' => $deleteConditions];
             $this->deleteCore($tableName, $deleteConditionsCombined);
         }
+        $this->deleteQueue = [];
+
 
         foreach ($this->updateQueue AS $tableName => $update) {
             foreach ($update AS $conditionArray => $dataArrays) {
@@ -2942,6 +3048,8 @@ class DatabaseSQL extends Database
                 $this->update($tableName, $mergedDataArray, $conditionArray);
             }
         }
+        $this->updateQueue = [];
+
 
         foreach ($this->insertQueue AS $tableName => $dataArrays) {
             // The table has a collection trigger
@@ -2960,6 +3068,18 @@ class DatabaseSQL extends Database
 
             $this->insertCore($tableName, $dataArrays);
         }
+        $this->insertQueue = [];
+
+
+        foreach ($this->upsertQueue AS $tableName => $upserts) {
+            foreach ($upserts AS $upsertCondition => $upsertParams) {
+                foreach ($upsertParams AS $upsertParam => $upsertData) {
+                    $this->upsertCoreMulti($tableName, explode(',', $upsertCondition), explode(',', $upsertParam), $upsertData);
+                }
+            }
+        }
+        $this->upsertQueue = [];
+
 
         foreach ($triggerCallbacks AS $table => $collectionTriggers) {
             foreach ($collectionTriggers AS $entry => $entryPair) {
