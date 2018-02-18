@@ -405,7 +405,10 @@ class DatabaseSQL extends Database
 
                         if (($key = array_search($startColumn, $values[2])) !== false) { // Check to see if we are, in-fact, inserting the column
                             $values[2][] = $endColumn;
-                            $values[3][] = $this->applyTransformFunction($endFunction, $values[3][$key], $typeOverride); // And if we are, add the new copy column to the list of insert columns
+
+                            foreach ($values[3] AS &$valuesArray) {
+                                $valuesArray[] = $this->applyTransformFunction($endFunction, $valuesArray[$key], $typeOverride); // And if we are, add the new copy column to the list of insert columns
+                            }
                         }
                     }
                 }
@@ -415,29 +418,27 @@ class DatabaseSQL extends Database
                     if (isset($this->encode[$tableName]) && isset($this->encode[$tableName][$column])) {
                         list($function, $typeOverride) = $this->encode[$tableName][$column];
 
-                        $values[3][$key] = $this->applyTransformFunction($function, $values[3][$key], $typeOverride);
+                        foreach ($values[3] AS &$valuesArray) {
+                            $valuesArray[$key] = $this->applyTransformFunction($function, $valuesArray[$key], $typeOverride);
+                        }
                     }
 
                     $column = $this->formatValue(Type\Type::column, $column);
                 }
 
                 // Values
-                foreach ($values[3] AS &$item) {
-                    if (!$this->isTypeObject($item)) {
-                        $item = $this->auto($item);
-                    }
-
-                    $item = $this->formatValue($item->type, $item->value);
+                $valueStatements = [];
+                foreach ($values[3] AS $valuesArray) {
+                    $valueStatements[] = $this->formatValue(Type\Type::arraylist, $valuesArray);
                 }
 
-                // Combine as list.
+
+                // Return query componenet
                 return $this->sqlInterface->arrayQuoteStart
                     . implode($this->sqlInterface->arraySeperator, $values[2])
                     . $this->sqlInterface->arrayQuoteEnd
                     . ' VALUES '
-                    . $this->sqlInterface->arrayQuoteStart
-                    . implode($this->sqlInterface->arraySeperator, $values[3])
-                    . $this->sqlInterface->arrayQuoteEnd;
+                    . implode($this->sqlInterface->arraySeperator, $valueStatements);
             break;
 
             case DatabaseSQL::FORMAT_VALUE_TABLE_UPDATE_ARRAY:
@@ -2554,7 +2555,7 @@ class DatabaseSQL extends Database
                 }
             }
 
-            return $this->insertCore($tableName, $dataArray);
+            return $this->insertCore($tableName, [$dataArray]);
         }
     }
 
@@ -2596,18 +2597,32 @@ class DatabaseSQL extends Database
      * @see DatabaseSQL::insert()
      *
      * @param string $tableName {@see DatabaseSQL::insert()}
-     * @param mixed  $dataArray {@see DatabaseSQL::insert()}
+     * @param mixed  $dataArrays {@see DatabaseSQL::insert()}
      *
      * @return bool
      * @throws Exception
      */
-    private function insertCore($tableName, $dataArray)
+    private function insertCore($tableName, $dataArrays)
     {
-        /* Actual Insert */
-        $columns = array_keys($dataArray);
-        $values = array_values($dataArray);
+        // Get the list of columns that composes all data arrays
+        $columns = [];
+        foreach ($dataArrays AS $dataArray) {
+            $columns = array_merge($columns, array_diff(array_keys($dataArray), $columns));
+        }
 
+        // Rebuild the data array so that all columns are in common
+        $mergedDataArrays = [];
+        foreach ($dataArrays AS $dataArray) {
+            $mergedDataArray = [];
 
+            foreach($columns AS $index => $column) {
+                $mergedDataArray[$index] = $dataArray[$column] ?? null;
+            }
+
+            $mergedDataArrays[] = $mergedDataArray;
+        }
+
+        // If our columns includes an IDENTITY column in SQL Server, enable identity insert.
         $serialDisabled = false;
         if ($this->sqlInterface->getLanguage() === 'sqlsrv'
             && isset($this->insertIdColumns[$tableName])
@@ -2616,12 +2631,13 @@ class DatabaseSQL extends Database
             $this->rawQuery('SET IDENTITY_INSERT ' . $this->formatValue(DatabaseSQL::FORMAT_VALUE_TABLE, $tableName) . ' ON');
         }
 
-
+        // Build the query
         $query = 'INSERT INTO '
             . $this->formatValue(DatabaseSQL::FORMAT_VALUE_TABLE, $this->getTableNameTransformation($tableName, $dataArray))
             . ' '
-            . $this->formatValue(DatabaseSQL::FORMAT_VALUE_TABLE_COLUMN_VALUES, $tableName, $columns, $values);
+            . $this->formatValue(DatabaseSQL::FORMAT_VALUE_TABLE_COLUMN_VALUES, $tableName, $columns, $mergedDataArrays);
 
+        // Return, performing the insertIdCallback and disabling identity_insert if we enabled it.
         if ($queryData = $this->rawQuery($query)) {
             $this->insertIdCallback($tableName);
 
@@ -2751,14 +2767,20 @@ class DatabaseSQL extends Database
 
 
     /**
-     * If a row matching $conditionArray already exists, it will be updated to reflect $dataArray. If it does not exist, a row will be inserted that is a composite of $conditionArray, $dataArray, and $dataArrayOnInsert.
-     * On systems that support OnDuplicateKey, this will NOT test the existence of $conditionArray, relying instead on the table's keys to do so. Thus, this function's $conditionArray should always match the table's own keys.
+     * If a row matching $conditionArray already exists, it will be updated to reflect $dataArray.
+     * If it does not exist, a row will be inserted that is a composite of $conditionArray, $dataArray,
+     * and $dataArrayOnInsert.
      *
-     * @param $tableName
-     * @param $conditionArray
-     * @param $dataArray
-     * @param $dataArrayOnInsert
-     * @return bool|resource
+     * On systems that support OnDuplicateKey, this will NOT test the existence of $conditionArray,
+     * relying instead on the table's keys to do so.
+     * Thus, this function's $conditionArray should always match the table's own keys.
+     *
+     * @param string $tableName
+     * @param array $conditionArray
+     * @param array $dataArray
+     * @param array $dataArrayOnInsert
+     *
+     * @return bool
      * @throws Exception
      */
     public function upsert($tableName, $conditionArray, $dataArray, $dataArrayOnInsert = [])
@@ -2781,7 +2803,7 @@ class DatabaseSQL extends Database
         switch ($this->sqlInterface->upsertMode) {
             case 'onDuplicateKey':
                 $query = 'INSERT INTO ' . $this->formatValue(DatabaseSQL::FORMAT_VALUE_TABLE, $tableName)
-                    . $this->formatValue(DatabaseSQL::FORMAT_VALUE_TABLE_COLUMN_VALUES, $tableName, $allColumns, $allValues)
+                    . $this->formatValue(DatabaseSQL::FORMAT_VALUE_TABLE_COLUMN_VALUES, $tableName, $allColumns, [$allValues])
                     . ' ON DUPLICATE KEY UPDATE ' . $this->formatValue(DatabaseSQL::FORMAT_VALUE_TABLE_UPDATE_ARRAY, $tableName, $dataArray);
                 break;
 
@@ -2794,7 +2816,7 @@ class DatabaseSQL extends Database
                 }
 
                 $query = 'INSERT INTO ' . $this->formatValue(DatabaseSQL::FORMAT_VALUE_TABLE, $tableName)
-                    . $this->formatValue(DatabaseSQL::FORMAT_VALUE_TABLE_COLUMN_VALUES, $tableName, $allColumns, $allValues)
+                    . $this->formatValue(DatabaseSQL::FORMAT_VALUE_TABLE_COLUMN_VALUES, $tableName, $allColumns, [$allValues])
                     . ' ON CONFLICT '
                     . $this->formatValue(DatabaseSQL::FORMAT_VALUE_COLUMN_ARRAY, array_keys($conditionArray))
                     . ' DO UPDATE SET ' . $this->formatValue(DatabaseSQL::FORMAT_VALUE_TABLE_UPDATE_ARRAY, $tableName, $dataArray);
@@ -2936,9 +2958,7 @@ class DatabaseSQL extends Database
                 }
             }
 
-            foreach ($dataArrays AS $dataArray) {
-                $this->insertCore($tableName, $dataArray);
-            }
+            $this->insertCore($tableName, $dataArrays);
         }
 
         foreach ($triggerCallbacks AS $table => $collectionTriggers) {
