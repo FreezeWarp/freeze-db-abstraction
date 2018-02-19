@@ -97,7 +97,7 @@ The DAL is capable of (experimental) query-joining through the queue system: eit
     2.  `queueUpdate("tableName", [address => "123 Downing St"], [id => 1])` can be combined into
     3.  `update("tableName", [name => Bob, address => "123 Downing St"], [id => 1])`
 
-3.  At present, multiple insertions are not combined in any way, as the SQL backend is currently incapable of inserting multiple rows at once. This may change in the future.
+3.  All insertions into the same table will be combined (filling in non-specified columns as NULL as needed), and all upserts into a table with the same update component will be be combined.
 
 
 Transactions
